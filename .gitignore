@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+.env
+*.db
+*.pkl
+*.csv
+patients_database.csv
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Allow the dataset for training
+!backend/healthcare_patient_journey.csv

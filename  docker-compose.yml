@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+
+  # ─── Frontend (React + Vite) ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: healthcare_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_HARDHAT_URL=http://localhost:8545
+    depends_on:
+      - backend
+    networks:
+      - healthcare_net
+    restart: unless-stopped
+
+  # ─── Backend (FastAPI) ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: healthcare_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-dummy_token}
+      - PYTHONUNBUFFERED=1
+    networks:
+      - healthcare_netSpO₂: 98%
+
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Hardhat Blockchain Node ──────────────────────────────────────────────
+  hardhat:
+    image: node:20-alpine
+    container_name: healthcare_hardhat
+    working_dir: /app
+    command: >
+      sh -c "npm install && npx hardhat node --hostname 0.0.0.0"
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./blockchain:/app
+    networks:
+      - healthcare_net
+    restart: unless-stopped
+
+networks:
+  healthcare_net:
+    driver: bridge
