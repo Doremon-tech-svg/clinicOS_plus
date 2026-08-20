@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 const CSS = `
 * {
@@ -19,6 +20,7 @@ const CSS = `
   --deep-lilac-800: #382244;
   --deep-lilac-900: #1c1122;
   --deep-lilac-950: #140c18;
+  
 }
 
 body {
@@ -526,6 +528,29 @@ export default function Laboratory() {
   const [activeNav, setActiveNav] = useState("Overview");
   const [time, setTime] = useState(new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const [tests, setTests] = useState([]);
+  const [stats, setStats] = useState({ Pending: 0, 'In Progress': 0, Completed: 0, Flagged: 0 });
+
+  const fetchLabData = async () => {
+    try {
+      const testsRes = await fetch("http://localhost:8000/api/lab/tests");
+      const testsData = await testsRes.json();
+      setTests(testsData.tests || []);
+
+      const statsRes = await fetch("http://localhost:8000/api/lab/stats");
+      const statsData = await statsRes.json();
+      setStats(statsData);
+    } catch (e) {
+      console.error("Failed to fetch lab data", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLabData();
+    const t = setInterval(fetchLabData, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
@@ -584,12 +609,12 @@ export default function Laboratory() {
                     {item === "Overview"
                       ? "dashboard"
                       : item === "Specimens"
-                      ? "biotech"
-                      : item === "Instruments"
-                      ? "precision_manufacturing"
-                      : item === "AI Insights"
-                      ? "psychology"
-                      : "history"}
+                        ? "biotech"
+                        : item === "Instruments"
+                          ? "precision_manufacturing"
+                          : item === "AI Insights"
+                            ? "psychology"
+                            : "history"}
                   </span>
                   <span>{item}</span>
                 </button>
@@ -626,11 +651,11 @@ export default function Laboratory() {
               </button>
               <h1 className="topbar-title">🔬 Laboratory Command (Violet Zone)</h1>
               <div className="topbar-stats">
-                <span>Pending: 15</span>
+                <span>Pending: {stats.Pending || 0}</span>
                 <div className="stat-dot"></div>
-                <span>In Progress: 8</span>
+                <span>In Progress: {stats['In Progress'] || 0}</span>
                 <div className="stat-dot"></div>
-                <span>Completed: 142</span>
+                <span>Completed: {stats.Completed || 0}</span>
               </div>
             </div>
             <div className="topbar-right">
@@ -638,9 +663,7 @@ export default function Laboratory() {
                 <p className="time-main">{timeStr}</p>
                 <p className="time-date">{dateStr.toUpperCase()}</p>
               </div>
-              <button className="icon-btn">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
+              <NotificationBell />
               <button className="icon-btn">
                 <span className="material-symbols-outlined">settings</span>
               </button>
@@ -673,49 +696,37 @@ export default function Laboratory() {
                       borderRadius: "9999px",
                     }}
                   >
-                    8 CRITICAL
+                    {tests.filter(t => t.priority === 'Stat' && t.status !== 'Completed').length} CRITICAL
                   </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  {[
-                    {
-                      name: "Mrs. Sharma",
-                      location: "OT Silver",
-                      test: "Cardiac Panel / Electrolytes",
-                      time: "8m ago",
-                      progress: 75,
-                    },
-                    {
-                      name: "Mr. Jacob",
-                      location: "ICU 302",
-                      test: "Arterial Blood Gas (ABG)",
-                      time: "12m ago",
-                      progress: 40,
-                    },
-                  ].map((item, i) => (
-                    <div key={i} className="glass-card" style={{ padding: "1rem", borderRadius: "0.5rem" }}>
+                  {tests.filter(t => t.priority === 'Stat' && t.status !== 'Completed').slice(0,3).map((item, i) => (
+                    <div key={item.id} className="glass-card" style={{ padding: "1rem", borderRadius: "0.5rem" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                         <span style={{ fontSize: "0.75rem", fontWeight: "900" }}>
-                          {item.name} — <span style={{ color: "var(--deep-lilac-600)" }}>{item.location}</span>
+                          {item.patient_name} — <span style={{ color: "var(--deep-lilac-600)" }}>{item.patient_room}</span>
                         </span>
                         <span style={{ fontSize: "0.625rem", fontFamily: "monospace", color: "#4d444f" }}>
-                          {item.time}
+                          {item.status}
                         </span>
                       </div>
                       <p style={{ fontSize: "0.875rem", fontWeight: "500", marginBottom: "0.75rem" }}>
-                        {item.test}
+                        {item.test_name}
                       </p>
                       <div className="stat-bar">
                         <div
                           className="stat-bar-fill"
                           style={{
-                            width: `${item.progress}%`,
-                            background: item.progress > 70 ? "#ba1a1a" : "var(--deep-lilac-600)",
+                            width: item.status === 'In Progress' ? '50%' : '10%',
+                            background: item.status === 'In Progress' ? "var(--deep-lilac-600)" : "#ba1a1a",
                           }}
                         ></div>
                       </div>
                     </div>
                   ))}
+                  {tests.filter(t => t.priority === 'Stat' && t.status !== 'Completed').length === 0 && (
+                     <div style={{ padding: "1rem", textAlign: "center", fontSize:"0.875rem", color:"gray" }}>No active STAT orders</div>
+                  )}
                 </div>
               </div>
 
@@ -736,19 +747,23 @@ export default function Laboratory() {
                       </tr>
                     </thead>
                     <tbody style={{ borderTop: "1px solid #e6e1e8" }}>
-                      {[
-                        { room: "B-104", patient: "Anjali R.", test: "CBC" },
-                        { room: "A-212", patient: "Vikram K.", test: "Lipid Profile" },
-                      ].map((row, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid #e6e1e8" }}>
-                          <td style={{ padding: "0.75rem 0", fontFamily: "monospace" }}>{row.room}</td>
-                          <td style={{ padding: "0.75rem 0" }}>{row.patient}</td>
-                          <td style={{ padding: "0.75rem 0" }}>{row.test}</td>
+                      {tests.filter(t => t.status === 'Pending').slice(0,5).map((row, i) => (
+                        <tr key={row.id} style={{ borderBottom: "1px solid #e6e1e8" }}>
+                          <td style={{ padding: "0.75rem 0", fontFamily: "monospace" }}>{row.patient_room}</td>
+                          <td style={{ padding: "0.75rem 0" }}>{row.patient_name}</td>
+                          <td style={{ padding: "0.75rem 0" }}>{row.test_name}</td>
                           <td style={{ padding: "0.75rem 0", textAlign: "right" }}>
-                            <button className="btn-primary">COLLECT</button>
+                            <button onClick={() => {
+                               fetch(`http://localhost:8000/api/lab/tests/${row.id}`, {
+                                 method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'In Progress'})
+                               }).then(fetchLabData);
+                            }} className="btn-primary">COLLECT</button>
                           </td>
                         </tr>
                       ))}
+                      {tests.filter(t => t.status === 'Pending').length === 0 && (
+                        <tr><td colSpan="4" style={{padding:'1rem',textAlign:'center',color:'gray'}}>No pending collections</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -764,23 +779,8 @@ export default function Laboratory() {
                   Active Analysis Tracker
                 </h3>
 
-                {[
-                  {
-                    label: "Hematology",
-                    id: "#V-8829-X",
-                    progress: 72,
-                    status: "ANALYZING — 72% Complete",
-                    fills: [true, true, true, false, false],
-                  },
-                  {
-                    label: "Biochemistry",
-                    id: "#V-8834-Y",
-                    progress: 40,
-                    status: "PROCESSING — Centrifuge Unit A",
-                    fills: [true, true, false, false, false],
-                  },
-                ].map((lab, i) => (
-                  <div key={i} className="analysis-tracker-row">
+                {tests.filter(t => t.status === 'In Progress').slice(0,4).map((lab, i) => (
+                  <div key={lab.id} className="analysis-tracker-row">
                     <div
                       style={{
                         display: "flex",
@@ -789,7 +789,7 @@ export default function Laboratory() {
                       }}
                     >
                       <span style={{ fontSize: "0.625rem", fontWeight: "900", textTransform: "uppercase", color: "#4d444f" }}>
-                        {lab.label}
+                        {lab.patient_name} — {lab.test_name}
                       </span>
                       <span
                         style={{
@@ -798,25 +798,33 @@ export default function Laboratory() {
                           background: "#f2ecf4",
                           padding: "0.25rem 0.5rem",
                           borderRadius: "0.25rem",
-                          color: "var(--deep-lilac-600)",
                         }}
                       >
-                        {lab.id}
+                        {lab.test_type}
                       </span>
                     </div>
                     <div className="progress-bars">
-                      {lab.fills.map((filled, idx) => (
-                        <div
-                          key={idx}
-                          className={`progress-bar-small ${filled ? "filled" : ""}`}
-                        ></div>
-                      ))}
+                       <div className="progress-bar-small filled"></div>
+                       <div className="progress-bar-small filled"></div>
+                       <div className="progress-bar-small"></div>
+                       <div className="progress-bar-small"></div>
+                       <div className="progress-bar-small"></div>
                     </div>
-                    <p style={{ fontSize: "0.75rem", color: "var(--deep-lilac-600)", fontWeight: "700" }}>
-                      Status: {lab.status}
-                    </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: "0.625rem", fontWeight: "600", color: "var(--deep-lilac-600)" }}>
+                        PROCESSING
+                      </span>
+                      <button onClick={() => {
+                        fetch(`http://localhost:8000/api/lab/tests/${lab.id}`, {
+                          method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'Completed', result:'Normal Result'})
+                        }).then(fetchLabData);
+                      }} className="btn-primary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.65rem" }}>MARK DONE</button>
+                    </div>
                   </div>
                 ))}
+                {tests.filter(t => t.status === 'In Progress').length === 0 && (
+                   <div style={{ padding: "1rem", textAlign: "center", fontSize:"0.875rem", color:"gray" }}>No tests currently processing</div>
+                )}
               </div>
 
               {/* Instrument Grid */}

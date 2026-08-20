@@ -2,6 +2,7 @@
   "name": "healthcare-blockchain",
   "version": "1.0.0",
   "description": "Healthcare Consent Smart Contracts",
+  "type": "module",
   "scripts": {
     "node": "npx hardhat node",
     "compile": "npx hardhat compile",

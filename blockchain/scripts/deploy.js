@@ -1,6 +1,10 @@
-const { ethers } = require("hardhat");
-const fs = require("fs");
-const path = require("path");
+import { ethers } from "hardhat";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function main() {
   console.log("Deploying HealthcareConsent to local Hardhat node...\n");
@@ -65,9 +69,10 @@ async function main() {
   console.log("\n🎉 Deployment complete!");
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("Deployment failed:", err);
-    process.exit(1);
-  });
+try {
+  await main();
+  process.exit(0);
+} catch (err) {
+  console.error("Deployment failed:", err);
+  process.exit(1);
+}

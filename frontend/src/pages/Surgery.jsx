@@ -1,7 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 export default function Surgery() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [otStatus, setOtStatus] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const [otRes, schedRes, auditRes] = await Promise.all([
+        fetch("http://localhost:8000/api/surgery/ot-status"),
+        fetch("http://localhost:8000/api/surgery/schedule"),
+        fetch("http://localhost:8000/api/blockchain/events")
+      ]);
+      const otData = await otRes.json();
+      const schedData = await schedRes.json();
+      const auditData = await auditRes.json();
+      setOtStatus(otData.ot_status || []);
+      setSchedule(schedData.surgeries || []);
+      setAuditLogs(auditData.events || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const t = setInterval(fetchData, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <>
@@ -442,10 +470,10 @@ export default function Surgery() {
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <button className="emergency-override">Emergency Override</button>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button className="header-icon-btn"><span className="material-symbols-outlined">notifications</span></button>
+                <NotificationBell />
                 <button className="header-icon-btn"><span className="material-symbols-outlined">settings</span></button>
               </div>
               <div className="avatar">
@@ -465,21 +493,21 @@ export default function Surgery() {
                   <span style={{ fontSize: 10, fontFamily: "monospace", color: "#B3B3B3" }}>REAL-TIME TELEMETRY ACTIVE</span>
                 </div>
                 <div className="grid-5">
-                  {[
-                    { id: "OT-01", status: "In Surgery", dot: "#1A1A1A", pulse: true, statusColor: "#1A1A1A" },
-                    { id: "OT-02", status: "Preparing", dot: "#808080", statusColor: "#666666" },
-                    { id: "OT-03", status: "Available", dot: "#CCCCCC", statusColor: "#808080" },
-                    { id: "OT-04", status: "Cleaning", dot: "#B3B3B3", statusColor: "#808080" },
-                    { id: "OT-05", status: "Available", dot: "#CCCCCC", statusColor: "#808080" },
-                  ].map((ot) => (
-                    <div key={ot.id} className="glass-panel ghost-border ot-card">
+                  {otStatus.map((ot) => (
+                    <div key={ot.room} className="glass-panel ghost-border ot-card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 900, color: "#333333" }}>{ot.id}</span>
-                        <div className={`dot ${ot.pulse ? "critical-pulse" : ""}`} style={{ background: ot.dot }} />
+                        <span style={{ fontSize: "0.875rem", fontWeight: 900, color: "#333333" }}>{ot.room}</span>
+                        <div className={`dot ${ot.status === 'In Progress' ? "critical-pulse" : ""}`} 
+                             style={{ background: ot.status === 'In Progress' ? "#ba1a1a" : ot.status === 'Scheduled' ? "#eab308" : "#22c55e" }} />
                       </div>
                       <div>
                         <p style={{ fontSize: 10, textTransform: "uppercase", fontWeight: 700, color: "#999999", margin: "0 0 0.25rem 0" }}>Status</p>
-                        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: ot.statusColor, margin: 0 }}>{ot.status}</p>
+                        <p style={{ fontSize: "0.75rem", fontWeight: 700, color: ot.status === 'In Progress' ? "#ba1a1a" : ot.status === 'Scheduled' ? "#ca8a04" : "#16a34a", margin: 0 }}>
+                          {ot.status}
+                        </p>
+                        {ot.patient && (
+                          <p style={{ fontSize: 10, color: "#808080", marginTop: "4px" }}>{ot.patient}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -526,24 +554,25 @@ export default function Surgery() {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: "#808080" }}>Dr. Aris Thorne</td>
-                        <td style={{ color: "#999999" }}>Lead Surgeon</td>
-                        <td style={{ color: "#999999" }}>OT-01</td>
-                        <td><span className="badge" style={{ background: "#121212", color: "white" }}>Active</span></td>
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: "#808080" }}>Nurse K. Miller</td>
-                        <td style={{ color: "#999999" }}>Scrub Nurse</td>
-                        <td style={{ color: "#999999" }}>OT-01</td>
-                        <td><span className="badge" style={{ background: "#121212", color: "white" }}>Active</span></td>
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: "#808080" }}>Dr. Sarah Chen</td>
-                        <td style={{ color: "#999999" }}>Anaesthetist</td>
-                        <td style={{ color: "#999999" }}>Standby</td>
-                        <td><span className="badge" style={{ background: "#E6E6E6", color: "#808080", border: "1px solid #CCCCCC" }}>Ready</span></td>
-                      </tr>
+                      {schedule.slice(0, 5).map((s) => (
+                        <tr key={s.id}>
+                          <td style={{ fontWeight: 500, color: "#808080" }}>{s.surgeon_name || 'Unassigned'}</td>
+                          <td style={{ color: "#999999" }}>Surgeon</td>
+                          <td style={{ color: "#999999" }}>{s.ot_room}</td>
+                          <td>
+                            <span className="badge" style={{ 
+                              background: s.status === 'In Progress' ? "#121212" : "#E6E6E6", 
+                              color: s.status === 'In Progress' ? "white" : "#808080",
+                              border: s.status === 'In Progress' ? "none" : "1px solid #CCCCCC" 
+                            }}>
+                              {s.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {schedule.length === 0 && (
+                        <tr><td colSpan="4" style={{ textAlign:'center' }}>No scheduled surgeries</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -582,19 +611,24 @@ export default function Surgery() {
                   <span style={{ padding: "0.125rem 0.5rem", background: "#121212", color: "white", borderRadius: "0.125rem", fontSize: 9, fontFamily: "monospace" }}>HASH: VERIFIED</span>
                 </div>
                 <div>
-                  {[
-                    { time: "14:22:01", txt: "Drug Dispensing: Morphine 2mg", hash: "0x7a2...4f1" },
-                    { time: "14:18:45", txt: "Patient Handover: OT-01 to Recovery", hash: "0x8b1...9c2" },
-                    { time: "14:05:12", txt: "Biopsy Sample Logged: Case #992", hash: "0x3d4...1e8" },
-                  ].map((row) => (
-                    <div key={row.time} className="audit-row">
+                  {auditLogs.slice(0, 5).map((row) => (
+                    <div key={row.id} className="audit-row">
                       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#B3B3B3" }}>{row.time}</span>
-                        <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "#808080", margin: 0 }}>{row.txt}</p>
+                        <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#B3B3B3" }}>
+                          {new Date(row.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+                        </span>
+                        <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "#808080", margin: 0 }}>
+                          {row.action}: {row.details.slice(0,30)}
+                        </p>
                       </div>
-                      <span style={{ fontFamily: "monospace", fontSize: 10, color: "#B3B3B3" }}>{row.hash}</span>
+                      <span style={{ fontFamily: "monospace", fontSize: 10, color: "#B3B3B3" }}>
+                        {row.tx_hash.slice(0,10)}...
+                      </span>
                     </div>
                   ))}
+                  {auditLogs.length === 0 && (
+                    <div style={{ padding: '1rem', textAlign: 'center' }}>No audit logs found</div>
+                  )}
                 </div>
               </section>
 

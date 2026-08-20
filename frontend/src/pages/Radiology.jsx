@@ -1,11 +1,35 @@
 import { useState, useEffect } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 export default function Radiology() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [time, setTime] = useState(new Date());
+  
+  const [fleet, setFleet] = useState([]);
+  const [queue, setQueue] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const [fRes, qRes] = await Promise.all([
+        fetch('http://localhost:8000/api/radiology/fleet'),
+        fetch('http://localhost:8000/api/radiology/queue')
+      ]);
+      const fData = await fRes.json();
+      const qData = await qRes.json();
+      
+      setFleet(fData.fleet || []);
+      setQueue(qData.queue || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
+    fetchData();
+    const interval = setInterval(() => {
+      setTime(new Date());
+      fetchData();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -115,9 +139,7 @@ export default function Radiology() {
 
         <div className="flex items-center gap-3">
           <span className="text-sm text-[#3c494b] font-bold">{timeStr}</span>
-          <button className="p-2 rounded-full hover:bg-[#2bc6d4]/10 text-[#006971]">
-            <span className="material-symbols-outlined">notifications</span>
-          </button>
+          <NotificationBell />
           <button className="p-2 rounded-full hover:bg-[#2bc6d4]/10 text-[#006971]">
             <span className="material-symbols-outlined">settings</span>
           </button>
@@ -172,22 +194,9 @@ export default function Radiology() {
               </div>
             </div>
             <div className="p-4 space-y-3 overflow-y-auto flex-1">
-              {[
-                {
-                  name: "Mrs. Sharma",
-                  location: "OT Silver",
-                  test: "CT Chest (Contrast)",
-                  priority: "STAT",
-                },
-                {
-                  name: "Mr. Johanssen",
-                  location: "Inpatient-402",
-                  test: "MRI Spine",
-                  priority: "ROUTINE",
-                },
-              ].map((order, i) => (
+              {queue.map((order) => (
                 <div
-                  key={i}
+                  key={order.id}
                   className={`p-3 rounded-lg border-l-4 ${
                     order.priority === "STAT"
                       ? "border-[#ba1a1a] bg-[#fff5f5]"
@@ -195,7 +204,7 @@ export default function Radiology() {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold text-sm">{order.name}</span>
+                    <span className="font-bold text-sm">{order.patient_name}</span>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
                         order.priority === "STAT"
@@ -207,13 +216,20 @@ export default function Radiology() {
                     </span>
                   </div>
                   <p className="text-xs text-[#3c494b] mb-3">
-                    {order.location} • {order.test}
+                    {order.test_type} • {order.status}
                   </p>
-                  <button className="text-[10px] font-bold text-white px-3 py-1 rounded bioluminescent-gradient">
-                    Schedule Now
+                  <button className="text-[10px] font-bold text-white px-3 py-1 rounded bioluminescent-gradient"
+                    onClick={() => {
+                      fetch(`http://localhost:8000/api/radiology/queue/${order.id}`, {
+                        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'Completed', ai_pre_read: 'Normal Findings'})
+                      }).then(fetchData);
+                    }}
+                  >
+                    Mark Complete
                   </button>
                 </div>
               ))}
+              {queue.length === 0 && <div className="text-xs text-gray-500 text-center py-4">No pending orders</div>}
             </div>
           </div>
 
@@ -248,57 +264,35 @@ export default function Radiology() {
         <section className="lg:col-span-2 flex flex-col gap-4 overflow-y-auto">
           {/* Scanner Fleet Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { name: "MRI 3T", device: "Magnetom Skyra", icon: "mri", progress: 65, status: "MRI Ferrous Check Passed", color: "text-[#006971]" },
-              { name: "CT Scanner", device: "Somatom Force", icon: "ct", progress: 40, status: "Contrast Pre-warm OK", color: "text-[#964904]" },
-              { name: "Digital X-Ray", device: "Multix Impact", icon: "x_ray", progress: 0, status: "Calibration Complete", color: "text-[#3c494b]", idle: true },
-              { name: "Ultrasound", device: "Acuson Sequoia", icon: "ultrasound", progress: 0, status: "Probes Serialized", color: "text-[#006971]", active: true },
-            ].map((scanner, i) => (
-              <div key={i} className="bg-white rounded-xl p-4 border border-[#d7e6e1]">
+            {fleet.map((scanner) => (
+              <div key={scanner.id} className="bg-white rounded-xl p-4 border border-[#d7e6e1]">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="text-xs text-[#3c494b] uppercase tracking-wider">
-                      {scanner.device}
+                      {scanner.machine_type}
                     </div>
                     <h3 className="font-extrabold font-headline text-lg">{scanner.name}</h3>
                   </div>
-                  <span className={`material-symbols-outlined text-3xl ${scanner.color}`}>
-                    {scanner.icon}
+                  <span className={`material-symbols-outlined text-3xl text-[#006971]`}>
+                    {scanner.machine_type.toLowerCase().includes('mri') ? 'mri' : scanner.machine_type.toLowerCase().includes('ct') ? 'ct' : 'sensors'}
                   </span>
                 </div>
-                {scanner.idle ? (
+                {scanner.status === 'Idle' ? (
                   <div className="flex items-center gap-3 py-4">
                     <div className="w-3 h-3 rounded-full bg-[#bbc9cb] animate-pulse"></div>
                     <span className="text-xl font-bold text-[#3c494b] uppercase">Idle Status</span>
                   </div>
-                ) : scanner.active ? (
+                ) : (
                   <div className="flex items-center gap-3 py-4">
                     <div className="w-3 h-3 rounded-full bg-[#006971]"></div>
-                    <span className="text-xl font-bold text-[#006971] uppercase">Active Unit 1</span>
+                    <span className="text-xl font-bold text-[#006971] uppercase">Active Scanning</span>
                   </div>
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <div className="flex justify-between text-[10px] font-bold mb-1">
-                        <span>{scanner.progress > 0 ? "SCAN PROGRESS" : "LOAD LEVEL"}</span>
-                        <span className="text-[#006971]">
-                          {scanner.progress}%{scanner.progress === 40 ? " BUSY" : ""}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-[#e2f1ec] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bioluminescent-gradient"
-                          style={{ width: `${scanner.progress}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </>
                 )}
                 <div className="mt-auto pt-3 border-t border-[#d7e6e1] flex items-center gap-2 text-[10px] font-bold text-[#006971]">
                   <span className="material-symbols-outlined text-[14px]">
-                    {scanner.idle ? "verified" : scanner.active ? "sensors" : "check_circle"}
+                    {scanner.status === 'Idle' ? "verified" : "sensors"}
                   </span>
-                  {scanner.status}
+                  {scanner.status} - {scanner.utilization_percent}% Utilized
                 </div>
               </div>
             ))}

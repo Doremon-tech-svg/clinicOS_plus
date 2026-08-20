@@ -1,7 +1,36 @@
 import { useState, useEffect } from 'react';
+import NotificationBell from '../components/NotificationBell';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [queue, setQueue] = useState([]);
+  const [stats, setStats] = useState({ total: 0, waiting: 0, avgWait: 0 });
+  const [doctors, setDoctors] = useState([]);
+  const [tokenInput, setTokenInput] = useState('');
+
+  const fetchData = async () => {
+    try {
+      const [qRes, sRes, dRes] = await Promise.all([
+        fetch('http://localhost:8000/api/opd/queue'),
+        fetch('http://localhost:8000/api/opd/stats'),
+        fetch('http://localhost:8000/api/opd/doctors')
+      ]);
+      const qData = await qRes.json();
+      const sData = await sRes.json();
+      const dData = await dRes.json();
+      setQueue(qData.queue || []);
+      setStats(sData || { total: 0, waiting: 0, avgWait: 0 });
+      setDoctors(dData.doctors || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const t = setInterval(fetchData, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     // Inject Manrope + Material Symbols
@@ -93,19 +122,14 @@ export default function App() {
           <div className="flex items-center gap-6">
             <div className="flex flex-col items-end">
               <span className="font-bold text-sm" style={{ color: '#076c43' }}>
-                242 Patients
+                {stats.total} Patients Today
               </span>
               <span className="text-xs font-medium" style={{ color: '#3f4942' }}>
-                Avg Wait: 14m
+                Avg Wait: {stats.avgWait}m
               </span>
             </div>
             <div className="flex gap-3">
-              <span
-                className="material-symbols-outlined cursor-pointer transition-colors"
-                style={{ color: '#3f4942' }}
-              >
-                notifications
-              </span>
+              <NotificationBell />
               <span
                 className="material-symbols-outlined cursor-pointer transition-colors"
                 style={{ color: '#3f4942' }}
@@ -253,7 +277,7 @@ export default function App() {
                       Wait Time
                     </p>
                     <p className="text-xl font-extrabold" style={{ color: '#076c43' }}>
-                      25m
+                      {stats.avgWait}m
                     </p>
                   </div>
                 </div>
@@ -266,10 +290,10 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#3f4942' }}>
-                      Patients
+                      Waiting
                     </p>
                     <p className="text-xl font-extrabold" style={{ color: '#0e1f16' }}>
-                      18
+                      {stats.waiting}
                     </p>
                   </div>
                 </div>
@@ -393,35 +417,37 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { t: 'G-1102', n: 'Jameson, Robert', d: 'General Med', w: '12m', p: 'High', pc: '#ba1a1a', pb: 'rgba(186,26,26,0.1)' },
-                        { t: 'P-4091', n: 'Mendez, Elena', d: 'Pediatrics', w: '08m', p: 'Medium', pc: '#076c43', pb: 'rgba(7,108,67,0.1)' },
-                        { t: 'C-2231', n: 'Smith, David', d: 'Cardiology', w: '45m', p: 'Low', pc: '#3a6d50', pb: '#b5ecc9' },
-                        { t: 'E-8820', n: 'Kaur, Priya', d: 'ENT', w: '05m', p: 'Medium', pc: '#076c43', pb: 'rgba(7,108,67,0.1)' },
-                      ].map((r, i) => (
+                      {queue.slice(0, 10).map((r, i) => (
                         <tr
-                          key={r.t}
+                          key={r.id}
                           className="transition-colors"
                           style={{
                             borderTop: i === 0 ? 'none' : '1px solid rgba(190,201,191,0.1)',
                           }}
                         >
-                          <td className="px-6 py-5 font-bold">{r.t}</td>
+                          <td className="px-6 py-5 font-bold">{r.token}</td>
                           <td className="px-6 py-5" style={{ color: '#0e1f16' }}>
-                            {r.n}
+                            {r.patient_name}
                           </td>
-                          <td className="px-6 py-5 text-sm">{r.d}</td>
-                          <td className="px-6 py-5 text-sm">{r.w}</td>
+                          <td className="px-6 py-5 text-sm">{r.department}</td>
+                          <td className="px-6 py-5 text-sm">{r.wait_mins}m</td>
                           <td className="px-6 py-5">
                             <span
                               className="px-3 py-1 rounded-full text-xs font-bold"
-                              style={{ backgroundColor: r.pb, color: r.pc }}
+                              style={{ 
+                                backgroundColor: r.ai_priority === 'High' ? 'rgba(186,26,26,0.1)' : r.ai_priority === 'Medium' ? 'rgba(7,108,67,0.1)' : '#b5ecc9',
+                                color: r.ai_priority === 'High' ? '#ba1a1a' : r.ai_priority === 'Medium' ? '#076c43' : '#3a6d50'
+                              }}
                             >
-                              {r.p}
+                              {r.ai_priority}
                             </span>
+                            <button className="ml-4 text-xs font-bold" style={{color: '#076c43'}} onClick={() => {
+                              fetch(`http://localhost:8000/api/opd/queue/${r.id}`, { method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'Completed'})}).then(fetchData);
+                            }}>DONE</button>
                           </td>
                         </tr>
                       ))}
+                      {queue.length === 0 && <tr><td colSpan="5" className="px-6 py-5 text-center">No patients in queue</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -482,11 +508,22 @@ export default function App() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter Reference ID"
+                        placeholder="Patient Name"
+                        value={tokenInput}
+                        onChange={(e) => setTokenInput(e.target.value)}
                         className="w-full border-none rounded-lg text-center font-bold"
                         style={{ backgroundColor: '#d3e8d9', padding: '12px' }}
                       />
                       <button
+                        onClick={async () => {
+                          if (!tokenInput.trim()) return;
+                          await fetch('http://localhost:8000/api/opd/checkin', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ patient_name: tokenInput, department: 'General Medicine' })
+                          });
+                          setTokenInput('');
+                          fetchData();
+                        }}
                         className="mt-2 w-full py-3 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
                         style={{ backgroundColor: '#076c43', color: '#fff' }}
                       >
@@ -550,49 +587,19 @@ export default function App() {
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[
-                {
-                  name: 'Dr. Sarah Jenkins',
-                  spec: 'General Physician • 12yr Exp',
-                  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDd5yap45NXOB6EJ20aPb8lP06CVRX2j8bbm3NIOibdx5gwNjHtjImzOWsVlFWP3D5wI9vGSJBN1C4Y-E5_EXZJTv8wXzQ9y5fcGQVX8VXNPuDqjx9qzmL3hbua_dnqEnS5Jff_fToDNZBXZ8hdD2YpW3Z4UGHxDdYCFzMBsWzntBneZjzQZkBN-pZGBM9noVZikxOLinY2ql032eWaMRX2sFAVBwI7AhLVPuLSVwZ-8l-yqAcoDqu_rPOG1G18yoabHcHpHLfYSXE',
-                  status: 'With Patient',
-                  statusColor: '#ba1a1a',
-                  seen: '24',
-                  next: '14:30',
-                },
-                {
-                  name: 'Dr. Elena Fisher',
-                  spec: 'Pediatric Specialist • 8yr Exp',
-                  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_GBGT2WDIFeDYus8GfwTutoj8DS0v3aYZ2gZBVy8jxegdOVCD1X2xn1sAf4tz410_SRvxcr4oGuhEignIU07XIlW1P_VBCmZNdZzbR_Ol3aqIJGITtTjJ_dgziyyLj6sFXEL5nZ_5iLVcz6ZVkdhr90DZLLs1BA-TaUu2SMkSBdgCUsqvSefbHoUwGfBu6vzPF0a5a_zWHfcZdcbbTUFnLaAZgi4ZKJIjLnuM1Hod39p61ylVdaHsRjdbH_DgKuUwgt-c1GdhRoA',
-                  status: 'Available',
-                  statusColor: '#076c43',
-                  seen: '18',
-                  next: 'Now',
-                },
-                {
-                  name: 'Dr. Aris Thorne',
-                  spec: 'Senior Cardiologist • 15yr Exp',
-                  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB2AYYUv14B72fUpO_931inlG2uD31gnQXCjQ3_RGW-N3K85RM1Hn6LQeI-GLOgBXrrLbtB6ZhGeH8g4RJ2wuo0auUhl97fwYcdp_cWgJ7NGRa3Y9sYZR24zk5bBrJxwn3Vwt0wZDSppR8uZGqiiicxaAbmx-CFqQzkVABrNPT1vnzY-1BZwt_Y34qqx9vhxXG88Q8uI6nxkHT9sV3mZztmjiDZxKoj7TQTLQRgbHyZCsx-m6Ju9KOgZG5x5IFP5sJ2wYDiB_a7Q70',
-                  status: 'In Procedure',
-                  statusColor: '#ba1a1a',
-                  seen: '12',
-                  next: '16:00',
-                },
-              ].map((d) => (
+              {doctors.map((d) => (
                 <div
-                  key={d.name}
+                  key={d.id}
                   className="glass-card p-6 rounded-2xl relative overflow-hidden flex flex-col"
                 >
                   <div className="flex gap-4 mb-6">
-                    <img
-                      src={d.img}
-                      alt={d.name}
-                      className="w-16 h-16 rounded-full object-cover shadow-sm"
-                    />
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-3xl text-gray-500">person</span>
+                    </div>
                     <div>
                       <h3 className="font-extrabold text-lg">{d.name}</h3>
                       <p className="text-sm" style={{ color: '#3f4942' }}>
-                        {d.spec}
+                        {d.specialization} • {d.department}
                       </p>
                     </div>
                   </div>
@@ -606,13 +613,13 @@ export default function App() {
                       </span>
                       <span
                         className="text-xs font-bold flex items-center gap-1"
-                        style={{ color: d.statusColor }}
+                        style={{ color: d.availability === 'Available' ? '#076c43' : '#ba1a1a' }}
                       >
                         <span
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: d.statusColor }}
+                          style={{ backgroundColor: d.availability === 'Available' ? '#076c43' : '#ba1a1a' }}
                         ></span>{' '}
-                        {d.status}
+                        {d.availability}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -626,7 +633,7 @@ export default function App() {
                         >
                           Seen Today
                         </p>
-                        <p className="text-xl font-black">{d.seen}</p>
+                        <p className="text-xl font-black">{d.seen_today || 0}</p>
                       </div>
                       <div
                         className="p-3 rounded-lg text-center"
@@ -636,10 +643,10 @@ export default function App() {
                           className="text-[10px] uppercase font-bold"
                           style={{ color: '#3f4942' }}
                         >
-                          Next Slot
+                          Shift
                         </p>
                         <p className="text-xl font-black" style={{ color: '#076c43' }}>
-                          {d.next}
+                          {d.shift}
                         </p>
                       </div>
                     </div>

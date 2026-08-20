@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 const CSS = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -441,8 +442,35 @@ export default function MaternityDashboard() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [activeDay, setActiveDay] = useState(9);
 
+  const [patients, setPatients] = useState([]);
+  const [beds, setBeds] = useState([]);
+  const [births, setBirths] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const [patRes, bedRes, blockRes] = await Promise.all([
+        fetch('http://localhost:8000/api/maternity/patients'),
+        fetch('http://localhost:8000/api/maternity/beds'),
+        fetch('http://localhost:8000/api/blockchain/events')
+      ]);
+      const pData = await patRes.json();
+      const bData = await bedRes.json();
+      const blData = await blockRes.json();
+
+      setPatients(pData.patients || []);
+      setBeds(bData.beds || []);
+      setBirths((blData.events || []).filter(e => e.action === 'Birth Registered' || e.action.includes('Birth')));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
+    fetchData();
+    const t = setInterval(() => {
+      setTime(new Date());
+      fetchData();
+    }, 5000);
     return () => clearInterval(t);
   }, []);
 
@@ -454,14 +482,6 @@ export default function MaternityDashboard() {
     { icon: "⚙️", label: "SETTINGS" },
   ];
 
-  const beds = [
-    { num: 201, status: "in-labor",  bstClass: "bst-labor",  bstLabel: "IN LABOR",    patient: "S. Jenkins" },
-    { num: 205, status: "empty",     bstClass: "bst-empty",  bstLabel: "EMPTY",       patient: "Available" },
-    { num: 202, status: "postpartum",bstClass: "bst-post",   bstLabel: "POSTPARTUM",  patient: "Mrs. Chen" },
-    { num: 204, status: "in-labor",  bstClass: "bst-labor",  bstLabel: "IN LABOR",    patient: "E. Fisher" },
-    { num: 206, status: "postpartum",bstClass: "bst-post",   bstLabel: "POSTPARTUM",  patient: "Mrs. Kapoor" },
-    { num: 207, status: "cleanup",   bstClass: "bst-clean",  bstLabel: "CLEAN-UP",    patient: "Pending" },
-  ];
 
   const dateStr = time.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).toUpperCase();
   const timeStr = time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -493,10 +513,7 @@ export default function MaternityDashboard() {
               <div className="topbar-time-main">{timeStr}</div>
               <div className="topbar-time-date">{dateStr}</div>
             </div>
-            <button className="top-icon-btn">
-              🔔
-              <span className="notif-badge">2</span>
-            </button>
+            <NotificationBell />
             <button className="top-icon-btn">⚙️</button>
             <div className="avatar-sm">KS</div>
           </div>
@@ -543,32 +560,21 @@ export default function MaternityDashboard() {
                     <span className="badge badge-monitoring">● 2 MONITORING</span>
                   </div>
                   <div className="card-bd">
-                    {/* Patient 1 */}
-                    <div className="labor-card">
-                      <div className="labor-patient">
-                        <span className="labor-name">Sarah Jenkins (G2P1)</span>
-                        <span className="badge badge-room">RM 201</span>
+                    {patients.slice(0, 3).map((p) => (
+                      <div key={p.id} className="labor-card">
+                        <div className="labor-patient">
+                          <span className="labor-name">{p.patient_name} ({p.parity})</span>
+                          <span className="badge badge-room">{p.room_no}</span>
+                        </div>
+                        <div className="labor-vitals">
+                          <span className="vital-item">🛏 {p.dilation_cm} cm dilated</span>
+                          <span className="vital-item">💓 {p.contraction_freq_mins} min freq</span>
+                        </div>
+                        <FHRBars bpm={p.fetal_heart_rate} />
+                        <button className="view-trace-btn">View Full Trace →</button>
                       </div>
-                      <div className="labor-vitals">
-                        <span className="vital-item">🛏 6 cm dilated</span>
-                        <span className="vital-item">💓 3 min freq</span>
-                      </div>
-                      <FHRBars bpm={142} />
-                      <button className="view-trace-btn">View Full Trace →</button>
-                    </div>
-                    {/* Patient 2 */}
-                    <div className="labor-card">
-                      <div className="labor-patient">
-                        <span className="labor-name">Elena Fisher (G1P0)</span>
-                        <span className="badge badge-room">RM 204</span>
-                      </div>
-                      <div className="labor-vitals">
-                        <span className="vital-item">🛏 4 cm dilated</span>
-                        <span className="vital-item">💓 5 min freq</span>
-                      </div>
-                      <FHRBars bpm={138} />
-                      <button className="view-trace-btn">View Full Trace →</button>
-                    </div>
+                    ))}
+                    {patients.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: 'gray', fontSize: '0.875rem' }}>No active labors</div>}
                   </div>
                 </div>
 
@@ -652,12 +658,12 @@ export default function MaternityDashboard() {
                   <div className="card-bd">
                     <div className="bed-grid">
                       {beds.map(b => (
-                        <div key={b.num} className={`bed-cell ${b.status}`}>
+                        <div key={b.room_no} className={`bed-cell ${b.status === 'In Labor' ? 'in-labor' : b.status === 'Postpartum' ? 'postpartum' : b.status === 'Clean-up' ? 'cleanup' : 'empty'}`}>
                           <div>
-                            <span className="bed-num">{b.num}</span>
-                            <span className={`bed-status-tag ${b.bstClass}`}>{b.bstLabel}</span>
+                            <span className="bed-num">{b.room_no}</span>
+                            <span className={`bed-status-tag ${b.status === 'In Labor' ? 'bst-labor' : b.status === 'Postpartum' ? 'bst-post' : b.status === 'Clean-up' ? 'bst-clean' : 'bst-empty'}`}>{b.status.toUpperCase()}</span>
                           </div>
-                          <div className="bed-patient">{b.patient}</div>
+                          <div className="bed-patient">{b.patient_name || 'Available'}</div>
                         </div>
                       ))}
                     </div>
@@ -717,21 +723,22 @@ export default function MaternityDashboard() {
                     <span className="badge badge-immutable">● IMMUTABLE</span>
                   </div>
                   <div className="card-bd">
-                    <div className="bc-entry">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div className="bc-baby">Baby Boy Jenkins</div>
-                        <div className="bc-time">10:15 AM</div>
+                    {births.slice(0, 3).map((b) => (
+                      <div key={b.id} className="bc-entry">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div className="bc-baby">{b.details.split(' - ')[0] || b.details}</div>
+                          <div className="bc-time">{new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                        <div className="bc-hash">Hash: {b.tx_hash.slice(0, 24)}...</div>
                       </div>
-                      <div className="bc-hash">Hash: 0x7a2d8f9e11c60b4c...8892</div>
-                    </div>
-                    <div className="bc-entry">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div className="bc-baby">Baby Girl Chen</div>
-                        <div className="bc-time">08:42 AM</div>
-                      </div>
-                      <div className="bc-hash">Hash: 0x3c1fa22e8b04d7a1...5541</div>
-                    </div>
-                    <button className="register-btn">
+                    ))}
+                    {births.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: 'gray', fontSize: '0.875rem' }}>No births registered yet</div>}
+                    <button className="register-btn" onClick={() => {
+                      fetch('http://localhost:8000/api/blockchain/log', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'Birth Registered', details: 'Baby Girl Sharma - 3.2kg - Apgar 9/10' })
+                      }).then(fetchData);
+                    }}>
                       🔗 Register New Birth
                     </button>
                   </div>

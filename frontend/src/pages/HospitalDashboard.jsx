@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   Shield, Crown, AlertTriangle, Activity, Zap, Settings, Clock,
   Thermometer, ShieldCheck, Ambulance, Stethoscope, Baby, Trash2,
@@ -43,19 +44,7 @@ const LOW_OCCUPANCY_DATA = Array.from({ length: 24 }, (_, i) => ({
   occupancy: 30 + Math.random() * 20,
 }));
 
-const LOG_ENTRIES = [
-  { id: 1, time: '10:32 AM', agent: '🤖 Triage NLP', action: 'Analyzed Ambulance Note. Confidence: 94%. Activating OT Silver.', status: 'success' },
-  { id: 2, time: '10:33 AM', agent: '🛏️ Bed Flow Optimizer', action: 'Reserved Bed 4B (Blue) for incoming trauma.', status: 'info' },
-  { id: 3, time: '10:34 AM', agent: '🔗 Blockchain', action: 'Hash 0x7a2b... logged for OT Activation.', status: 'info' },
-  { id: 4, time: '10:35 AM', agent: '💊 Pharmacy Agent', action: 'Stock check: O-Neg blood sufficient.', status: 'success' },
-  { id: 5, time: '10:36 AM', agent: '🌱 Green Agent', action: 'Energy savings recommendation generated.', status: 'success' },
-];
-
-const BLOCKCHAIN_EVENTS = [
-  { id: 1, time: '09:30:45', action: 'Consent Sign', patient: 'P-88219', hash: '0x7a2b...f91' },
-  { id: 2, time: '09:28:12', action: 'Data Access', patient: 'P-12044', hash: '0x1f92...c02' },
-  { id: 3, time: '09:15:22', action: 'Update Records', patient: 'P-99321', hash: '0x3e11...d44' },
-];
+// Removed hardcoded logs and blockchain events
 
 // --- Department Card Component (no hooks, safe) ---
 const DeptCard = ({ dept, index, onClick }) => {
@@ -73,9 +62,9 @@ const DeptCard = ({ dept, index, onClick }) => {
   };
   const cfg = statusConfig[dept.status] || statusConfig.active;
   const hexToRgb = (hex) => {
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
     return `${r},${g},${b}`;
   };
   const rgb = hexToRgb(dept.color === '#1e293b' ? '#334155' : dept.color);
@@ -125,6 +114,7 @@ const DeptCard = ({ dept, index, onClick }) => {
 // --- Main Component (all hooks inside) ---
 export default function ClinicalCommandCenter() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [chaosMode, setChaosMode] = useState(false);
   const [chartData, setChartData] = useState(INITIAL_CHART_DATA);
   const [isLowOccupancy, setIsLowOccupancy] = useState(false);
@@ -133,6 +123,10 @@ export default function ClinicalCommandCenter() {
   const [predictedDischarges, setPredictedDischarges] = useState(12);
   const [ambulanceAlert, setAmbulanceAlert] = useState(null);
   const [ambulanceLoading, setAmbulanceLoading] = useState(true);
+
+
+  const [aiLogs, setAiLogs] = useState([]);
+  const [blockchainEvents, setBlockchainEvents] = useState([]);
 
   // Fetch bed flow predictions
   useEffect(() => {
@@ -144,6 +138,33 @@ export default function ClinicalCommandCenter() {
       })
       .catch(err => console.error('Bed flow fetch error:', err));
   }, []);
+
+  // Fetch AI logs and blockchain events
+  useEffect(() => {
+    fetch('http://localhost:8000/api/admin/ai-audit')
+      .then(res => res.json())
+      .then(data => {
+        const records = data.records || [];
+        setAiLogs(records.map(r => ({
+          id: r.id,
+          time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          agent: `🤖 ${r.model_used || 'AI Agent'}`,
+          action: `${r.decision_type.toUpperCase()}: ${r.input_text.slice(0, 30)}... Confidence: ${r.confidence}%`,
+          status: 'success'
+        })));
+        
+        // Also map to blockchain events if they have a hash
+        setBlockchainEvents(records.filter(r => r.blockchain_tx).map(r => ({
+          id: r.id,
+          time: new Date(r.created_at).toLocaleTimeString(),
+          action: 'AI Decision',
+          patient: r.decision_type,
+          hash: r.blockchain_tx
+        })));
+      })
+      .catch(err => console.error('AI audit fetch error:', err));
+  }, []);
+
 
   // Fetch ambulance live alerts
   useEffect(() => {
@@ -189,6 +210,7 @@ export default function ClinicalCommandCenter() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-body selection:bg-amber-500/30">
+
       {/* Header */}
       <header className="fixed top-0 w-full z-50 flex items-center justify-between px-8 h-16 bg-[#EC9A04] shadow-md border-b border-amber-600/20">
         <div className="flex items-center gap-8">
@@ -215,11 +237,24 @@ export default function ClinicalCommandCenter() {
             <div className="flex items-center gap-1.5"><Clock size={16} /><span className="text-xs font-mono font-medium">{currentTime}</span></div>
             <div className="flex items-center gap-1.5"><Thermometer size={16} /><span className="text-xs font-medium">24°C</span></div>
           </div>
-          <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=100&h=100" alt="Admin" className="w-10 h-10 rounded-full border-2 border-white/50 object-cover" />
+          
+          {user && (
+            <div className="flex items-center gap-3 border-l border-white/20 pl-4 ml-2">
+              <div className="text-right hidden sm:block">
+                <div className="text-xs font-bold text-white">{user.name}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-white/70">{user.role}</div>
+              </div>
+              <button onClick={logout} className="h-10 w-10 rounded-full border-2 border-white/50 bg-white/20 flex items-center justify-center text-sm font-bold text-white hover:bg-red-500 transition-colors" title="Logout">
+                {user.name.charAt(0)}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       <main className={cn("max-w-7xl mx-auto pt-24 px-8 pb-20 transition-all duration-700 ease-in-out", chaosMode && "grayscale contrast-125 brightness-110")}>
+
+
         {/* Department Cards */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
@@ -235,7 +270,7 @@ export default function ClinicalCommandCenter() {
               {DEPARTMENTS.map((dept, i) => <DeptCard key={dept.id} dept={dept} index={i} onClick={() => handleDeptClick(dept)} />)}
             </div>
             <div className="flex items-center gap-6 mt-5 pt-4 border-t border-amber-200/40">
-              {[{ dot: '#ef4444', label: 'Critical', pulse: true },{ dot: '#f59e0b', label: 'Busy / Pending', pulse: false },{ dot: '#22c55e', label: 'Active / Clear', pulse: false },{ dot: '#94a3b8', label: 'Idle', pulse: false }].map(s => (
+              {[{ dot: '#ef4444', label: 'Critical', pulse: true }, { dot: '#f59e0b', label: 'Busy / Pending', pulse: false }, { dot: '#22c55e', label: 'Active / Clear', pulse: false }, { dot: '#94a3b8', label: 'Idle', pulse: false }].map(s => (
                 <div key={s.label} className="flex items-center gap-1.5"><span className={cn("w-2 h-2 rounded-full", s.pulse && "animate-pulse")} style={{ backgroundColor: s.dot }} /><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</span></div>
               ))}
               <div className="ml-auto flex items-center gap-1.5"><ChevronRight size={10} className="text-amber-400" /><span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Click a card to open dashboard</span></div>
@@ -243,7 +278,9 @@ export default function ClinicalCommandCenter() {
           </div>
         </section>
 
+
         <div className="grid grid-cols-12 gap-8">
+
           {/* Left Panel */}
           <div className="col-span-12 lg:col-span-4 space-y-8">
             <div className="glass-panel p-8 rounded-[2.5rem] bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm relative overflow-hidden group">
@@ -251,7 +288,7 @@ export default function ClinicalCommandCenter() {
               <div className="flex justify-between items-center mb-6"><h3 className="text-lg font-headline font-bold text-slate-800">Bed Occupancy</h3><Settings className="text-slate-400 w-5 h-5 cursor-pointer hover:rotate-90 transition-transform" /></div>
               <div className="relative w-52 h-52 mx-auto mb-8">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart><Pie data={[{ name: 'Occupied', value: 187 },{ name: 'Available', value: 63 }]} innerRadius={75} outerRadius={95} paddingAngle={5} dataKey="value" startAngle={90} endAngle={450}><Cell fill="#EC9A04" stroke="none" /><Cell fill="rgba(255,255,255,0.4)" stroke="none" /></Pie></PieChart>
+                  <PieChart><Pie data={[{ name: 'Occupied', value: 187 }, { name: 'Available', value: 63 }]} innerRadius={75} outerRadius={95} paddingAngle={5} dataKey="value" startAngle={90} endAngle={450}><Cell fill="#EC9A04" stroke="none" /><Cell fill="rgba(255,255,255,0.4)" stroke="none" /></Pie></PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center"><p className="text-5xl font-extrabold font-headline text-slate-800">187</p><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">/ 250 Beds</p></div>
               </div>
@@ -270,9 +307,12 @@ export default function ClinicalCommandCenter() {
             </div>
           </div>
 
+
           {/* Center Panel */}
           <div className="col-span-12 lg:col-span-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+
               {/* Ambulance Tracker - Live */}
               <div className="glass-panel rounded-[2.5rem] overflow-hidden bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm">
                 <div className="p-6 bg-amber-100/40 border-b border-amber-200/40 flex justify-between items-center">
@@ -303,6 +343,7 @@ export default function ClinicalCommandCenter() {
                 </div>
               </div>
 
+
               {/* Energy Chart */}
               <div className="glass-panel rounded-[2.5rem] p-8 bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm relative overflow-hidden group">
                 <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-2"><Zap className="text-amber-500 w-5 h-5" /><h3 className="font-headline font-bold text-slate-800">Utilization Flux</h3></div>
@@ -311,7 +352,7 @@ export default function ClinicalCommandCenter() {
                 <div className="h-40 -mx-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
-                      <defs><linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient><linearGradient id="colorOcc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#14b8a6" stopOpacity={0.1}/><stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/></linearGradient></defs>
+                      <defs><linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient><linearGradient id="colorOcc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#14b8a6" stopOpacity={0.1} /><stop offset="95%" stopColor="#14b8a6" stopOpacity={0} /></linearGradient></defs>
                       <Area type="monotone" dataKey="energy" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorEnergy)" />
                       <Area type="monotone" dataKey="occupancy" stroke="#14b8a6" strokeWidth={2} fillOpacity={1} fill="url(#colorOcc)" />
                       <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} itemStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
@@ -323,11 +364,12 @@ export default function ClinicalCommandCenter() {
               </div>
             </div>
 
+
             {/* AI Agent Log */}
             <div className="glass-panel rounded-[2.5rem] bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm overflow-hidden">
               <div className="p-6 bg-amber-100/30 border-b border-amber-200/40 flex items-center justify-between"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><Brain className="text-amber-600 w-5 h-5" /></div><h3 className="font-headline font-bold text-slate-800">AI Agent Activity Log</h3></div><div className="flex items-center gap-4"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Live Stream</span><ExternalLink className="w-4 h-4 text-slate-300 hover:text-amber-500 transition-colors cursor-pointer" /></div></div>
               <div className="p-8 space-y-6 max-h-[300px] overflow-y-auto scrollbar-hide">
-                {LOG_ENTRIES.map((log) => (
+                {aiLogs.length === 0 ? <p className="text-sm text-slate-500 text-center py-4">No AI logs available</p> : aiLogs.map((log) => (
                   <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} key={log.id} className="flex gap-5 group">
                     <div className="flex flex-col items-center"><div className={cn("w-3 h-3 rounded-full mt-1.5 shrink-0 transition-all", log.status === 'success' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.5)]')} /><div className="w-px h-full bg-slate-200 mt-2" /></div>
                     <div><div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.time}</span><span className="w-1 h-1 rounded-full bg-slate-200" /><span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-tight">{log.agent}</span></div><p className="text-sm text-slate-700 font-medium leading-relaxed group-hover:text-slate-900 transition-colors">{log.action}</p></div>
@@ -338,11 +380,12 @@ export default function ClinicalCommandCenter() {
           </div>
         </div>
 
+
         {/* Trust & Sustainability */}
         <section className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="glass-panel rounded-[2.5rem] bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm overflow-hidden flex flex-col">
             <div className="p-8 border-b border-amber-200/40 flex justify-between items-center bg-amber-100/20"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center"><Lock className="text-purple-600 w-6 h-6" /></div><div><h3 className="font-headline font-bold text-slate-800">Blockchain Trust Ledger</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Immutable Consent Tracking</p></div></div><div className="flex flex-col items-end gap-1"><span className="text-xs font-bold text-purple-700">34 Active Consents</span><span className="bg-red-100 text-red-600 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border border-red-200">2 Expiring Soon</span></div></div>
-            <div className="flex-grow overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-amber-100/10 text-slate-400 font-label text-[10px] uppercase tracking-[0.2em] border-b border-amber-200/20"><tr><th className="px-8 py-4 font-bold">Timestamp</th><th className="px-8 py-4 font-bold">Action</th><th className="px-8 py-4 font-bold">Hash</th><th className="px-8 py-4 font-bold">Verification</th></tr></thead><tbody className="divide-y divide-white/20">{BLOCKCHAIN_EVENTS.map((evt) => (<tr key={evt.id} className="hover:bg-amber-100/30 transition-colors group"><td className="px-8 py-5 font-mono text-[11px] text-slate-500 font-medium">{evt.time}</td><td className="px-8 py-5"><div className="flex flex-col"><span className="font-bold text-slate-700 tracking-tight">{evt.action}</span><span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {evt.patient}</span></div></td><td className="px-8 py-5 font-mono text-[11px] text-amber-600/70 font-semibold group-hover:text-amber-600 transition-colors">{evt.hash}</td><td className="px-8 py-5 text-right"><button className="text-[10px] font-bold text-teal-600 uppercase tracking-widest hover:text-teal-700 flex items-center gap-2 transition-colors ml-auto">Verify <ExternalLink size={10} /></button></td></tr>))}</tbody></table></div>
+            <div className="flex-grow overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-amber-100/10 text-slate-400 font-label text-[10px] uppercase tracking-[0.2em] border-b border-amber-200/20"><tr><th className="px-8 py-4 font-bold">Timestamp</th><th className="px-8 py-4 font-bold">Action</th><th className="px-8 py-4 font-bold">Hash</th><th className="px-8 py-4 font-bold">Verification</th></tr></thead><tbody className="divide-y divide-white/20">{blockchainEvents.length === 0 ? <tr><td colSpan={4} className="px-8 py-5 text-center text-slate-500 text-xs">No blockchain events found</td></tr> : blockchainEvents.map((evt) => (<tr key={evt.id} className="hover:bg-amber-100/30 transition-colors group"><td className="px-8 py-5 font-mono text-[11px] text-slate-500 font-medium">{evt.time}</td><td className="px-8 py-5"><div className="flex flex-col"><span className="font-bold text-slate-700 tracking-tight">{evt.action}</span><span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {evt.patient}</span></div></td><td className="px-8 py-5 font-mono text-[11px] text-amber-600/70 font-semibold group-hover:text-amber-600 transition-colors">{evt.hash.slice(0,10)}...{evt.hash.slice(-6)}</td><td className="px-8 py-5 text-right"><button className="text-[10px] font-bold text-teal-600 uppercase tracking-widest hover:text-teal-700 flex items-center gap-2 transition-colors ml-auto">Verify <ExternalLink size={10} /></button></td></tr>))}</tbody></table></div>
             <div className="p-4 bg-amber-100/30 border-t border-amber-200/40"><button className="w-full py-3 text-[10px] font-extrabold uppercase tracking-[0.3em] text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2">Explore Full Ledger <ChevronRight size={14} /></button></div>
           </div>
           <div className="glass-panel rounded-[2.5rem] p-8 bg-amber-100/30 backdrop-blur-md border border-amber-200/50 shadow-sm relative flex flex-col justify-between overflow-hidden">
