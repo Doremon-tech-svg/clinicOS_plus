@@ -1,7 +1,26 @@
 const { bootstrap } = require('./app');
+const db = require('./db');
+const { execSync } = require('child_process');
 const PORT = process.env.PORT || 8000;
 
-bootstrap().then(app => {
+async function runAutoSeed() {
+  try {
+    const row = await db.get(`SELECT COUNT(*) as count FROM hospital`);
+    if (!row || row.count === 0) {
+      console.log('🌱 No hospitals found. Running initial seeds...');
+      execSync('node src/db/seed.js', { stdio: 'inherit' });
+      execSync('node src/db/seed-hospitals.js', { stdio: 'inherit' });
+      console.log('✅ Auto-seeding complete.');
+    }
+  } catch (err) {
+    console.error('⚠️ Auto-seeding check failed (database might not be initialized yet).');
+    // Ignore error, app bootstrap will init schema
+  }
+}
+
+bootstrap().then(async (app) => {
+  await runAutoSeed();
+  
   app.listen(PORT, () => {
     console.log(`\n🏥  Apex Medical Center — Node.js Backend`);
     console.log(`✅  Running on http://localhost:${PORT}`);
