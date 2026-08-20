@@ -78,6 +78,15 @@ async function run(sql, params = []) {
       const lastID = (res.rows && res.rows[0] && res.rows[0].id) ? res.rows[0].id : null;
       return { lastInsertRowid: lastID, changes: res.rowCount };
     } catch (e) {
+      if (e.code === 'ENETUNREACH' && e.address && e.address.includes(':')) {
+        console.error("\n=======================================================");
+        console.error("🚨 CRITICAL DATABASE ERROR 🚨");
+        console.error("Render cannot connect to Supabase via IPv6.");
+        console.error("You are using the Direct connection string (port 5432).");
+        console.error("Please go to Supabase -> Database -> Connection String,");
+        console.error("select 'Transaction pooler' (port 6543), and use that URL instead!");
+        console.error("=======================================================\n");
+      }
       console.error("PG Run Error:", e.message, "\\nQuery:", sql, "\\nParams:", params);
       throw e;
     }
@@ -160,6 +169,15 @@ async function exec(sql) {
         await pgPool.query(stmt);
       }
     } catch (e) {
+      if (e.code === 'ENETUNREACH' && e.address && e.address.includes(':')) {
+        console.error("\n=======================================================");
+        console.error("🚨 CRITICAL DATABASE ERROR 🚨");
+        console.error("Render cannot connect to Supabase via IPv6.");
+        console.error("You are using the Direct connection string (port 5432).");
+        console.error("Please go to Supabase -> Database -> Connection String,");
+        console.error("select 'Transaction pooler' (port 6543), and use that URL instead!");
+        console.error("=======================================================\n");
+      }
       console.error("PG Exec Error:", e.message, "\\nQuery:", sql);
       throw e;
     }
