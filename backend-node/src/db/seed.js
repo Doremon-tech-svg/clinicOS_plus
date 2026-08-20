@@ -12,7 +12,10 @@ async function seed() {
   for (const t of clears) await db.run(`DELETE FROM ${t}`);
 
   // Hospital
-  await db.run(`INSERT OR REPLACE INTO hospital VALUES (1,'Apex Medical Center','Ansari Nagar, New Delhi - 110029','New Delhi','+91-11-2658-8500',250,'APEX2026')`);
+  await db.run(`INSERT INTO hospital (id, name, address, city, phone, total_beds, access_code) VALUES (1,'Apex Medical Center','Ansari Nagar, New Delhi - 110029','New Delhi','+91-11-2658-8500',250,'APEX2026')`);
+  if (db.IS_POSTGRES) {
+    try { await db.run(`SELECT setval('hospital_id_seq', (SELECT MAX(id) FROM hospital))`); } catch(e){}
+  }
 
   // Staff
   const staffList = [
