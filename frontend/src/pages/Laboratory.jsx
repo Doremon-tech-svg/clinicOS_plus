@@ -534,11 +534,11 @@ export default function Laboratory() {
 
   const fetchLabData = async () => {
     try {
-      const testsRes = await fetch("http://localhost:8000/api/lab/tests");
+      const testsRes = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/lab/tests`);
       const testsData = await testsRes.json();
       setTests(testsData.tests || []);
 
-      const statsRes = await fetch("http://localhost:8000/api/lab/stats");
+      const statsRes = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/lab/stats`);
       const statsData = await statsRes.json();
       setStats(statsData);
     } catch (e) {
@@ -754,7 +754,7 @@ export default function Laboratory() {
                           <td style={{ padding: "0.75rem 0" }}>{row.test_name}</td>
                           <td style={{ padding: "0.75rem 0", textAlign: "right" }}>
                             <button onClick={() => {
-                               fetch(`http://localhost:8000/api/lab/tests/${row.id}`, {
+                               fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/lab/tests/${row.id}`, {
                                  method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'In Progress'})
                                }).then(fetchLabData);
                             }} className="btn-primary">COLLECT</button>
@@ -815,7 +815,7 @@ export default function Laboratory() {
                         PROCESSING
                       </span>
                       <button onClick={() => {
-                        fetch(`http://localhost:8000/api/lab/tests/${lab.id}`, {
+                        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/lab/tests/${lab.id}`, {
                           method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'Completed', result:'Normal Result'})
                         }).then(fetchLabData);
                       }} className="btn-primary" style={{ padding: "0.2rem 0.5rem", fontSize: "0.65rem" }}>MARK DONE</button>

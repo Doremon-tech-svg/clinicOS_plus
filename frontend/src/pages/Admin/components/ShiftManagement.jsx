@@ -1,3 +1,4 @@
+import { API } from '../../../config/api';
 import { useState, useEffect } from 'react';
 import { Brain, CheckCircle2, AlertTriangle, CalendarDays, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -12,7 +13,7 @@ export default function ShiftManagement() {
     // Fetch staff for assignment
     const fetchStaff = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/staff');
+        const res = await fetch(API.staff);
         const data = await res.json();
         setStaff(data.staff || []);
       } catch (err) {
@@ -52,27 +53,9 @@ export default function ShiftManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black text-slate-800">Shift & Duty Management</h2>
-          <p className="text-sm text-slate-500 font-medium">Assign staff to departments and shifts.</p>
+          <p className="text-sm text-slate-500 font-medium">Assign staff to departments and shifts. Changes take effect immediately.</p>
         </div>
-        <button 
-          onClick={handleOptimize}
-          disabled={optimizing}
-          className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          {optimizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4 text-[#EC9A04]" />}
-          AI Auto-Optimize Shifts
-        </button>
       </div>
-
-      {showAiRec && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
-          <Brain className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
-          <div>
-            <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest mb-1">AI Recommendation Available</h3>
-            <p className="text-sm text-amber-800 font-medium">Predictive modeling shows a 40% spike in ER trauma admissions tonight. Recommend shifting 2 ICU nurses and 1 Trauma Surgeon to Night Shift in Emergency.</p>
-          </div>
-        </motion.div>
-      )}
 
       <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-left text-sm">

@@ -11,8 +11,8 @@ export default function Radiology() {
   const fetchData = async () => {
     try {
       const [fRes, qRes] = await Promise.all([
-        fetch('http://localhost:8000/api/radiology/fleet'),
-        fetch('http://localhost:8000/api/radiology/queue')
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/radiology/fleet`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/radiology/queue`)
       ]);
       const fData = await fRes.json();
       const qData = await qRes.json();
@@ -220,7 +220,7 @@ export default function Radiology() {
                   </p>
                   <button className="text-[10px] font-bold text-white px-3 py-1 rounded bioluminescent-gradient"
                     onClick={() => {
-                      fetch(`http://localhost:8000/api/radiology/queue/${order.id}`, {
+                      fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/radiology/queue/${order.id}`, {
                         method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'Completed', ai_pre_read: 'Normal Findings'})
                       }).then(fetchData);
                     }}

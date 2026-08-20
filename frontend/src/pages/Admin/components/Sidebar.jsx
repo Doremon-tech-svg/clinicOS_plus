@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Crown, Activity, Settings, Users, LayoutGrid, CalendarDays, Brain } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   
   const navItems = [
     { id: 'overview', label: 'Command Center', icon: LayoutGrid },
     { id: 'shifts', label: 'Duty & Shifts', icon: CalendarDays },
+    { id: 'approvals', label: 'Approvals', icon: Users },
     { id: 'departments', label: 'Departments', icon: Activity },
-    { id: 'staff', label: 'Staff Roster', icon: Users },
+    { id: 'staff', label: 'Staff Roster', icon: Settings },
   ];
 
   return (
@@ -41,12 +42,19 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         </nav>
       </div>
       
-      <div className="mt-auto p-6">
-        <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700 relative overflow-hidden">
-          <Brain className="absolute -right-4 -bottom-4 w-16 h-16 text-slate-700/30" />
-          <div className="text-xs font-bold text-[#EC9A04] uppercase tracking-widest mb-1">AI Assistant</div>
-          <p className="text-xs font-medium text-slate-400">Shift optimization is currently active.</p>
-        </div>
+      <div className="p-6">
+        <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Logged in as</div>
+        <div className="font-bold text-white text-sm mb-1 truncate">{user?.name || 'Administrator'}</div>
+        <div className="text-xs font-bold text-[#EC9A04] uppercase tracking-widest truncate">{user?.hospital_name || 'Hospital'}</div>
+      </div>
+
+      <div className="px-6 pb-6 mt-auto">
+        <button
+          onClick={logout}
+          className="w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all"
+        >
+          Sign Out
+        </button>
       </div>
     </aside>
   );

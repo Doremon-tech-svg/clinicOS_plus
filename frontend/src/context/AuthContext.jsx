@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext();
+const STORAGE_KEY = 'cp_session';
+const SESSION_DURATION_HOURS = 12;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -8,30 +10,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage on mount
-    const saved = localStorage.getItem('apex_user');
+    // Restore session from localStorage on mount
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed.user);
-        setToken(parsed.token);
-      } catch (e) {
-        localStorage.removeItem('apex_user');
+        const { user: savedUser, token: savedToken, expiresAt } = JSON.parse(saved);
+        // Check if session is still valid
+        if (expiresAt && Date.now() < expiresAt) {
+          setUser(savedUser);
+          setToken(savedToken);
+        } else {
+          // Session expired — clear it
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
       }
     }
     setLoading(false);
   }, []);
 
   const login = (userData, jwtToken) => {
+    const expiresAt = Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000;
     setUser(userData);
     setToken(jwtToken);
-    localStorage.setItem('apex_user', JSON.stringify({ user: userData, token: jwtToken }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userData, token: jwtToken, expiresAt }));
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('apex_user');
+    localStorage.removeItem(STORAGE_KEY);
     window.location.href = '/login';
   };
 

@@ -8,7 +8,7 @@ export const NotificationProvider = ({ children }) => {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/notifications');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/notifications`);
       const data = await res.json();
       if (data.notifications) {
         setNotifications(data.notifications);
@@ -27,7 +27,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markRead = async (id) => {
     try {
-      await fetch(`http://localhost:8000/api/notifications/${id}/read`, { method: 'PATCH' });
+      await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/notifications/${id}/read`, { method: 'PATCH' });
       fetchNotifications();
     } catch (err) {
       console.error(err);
@@ -36,7 +36,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllRead = async () => {
     try {
-      await fetch('http://localhost:8000/api/notifications/read-all', { method: 'PATCH' });
+      await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/notifications/read-all`, { method: 'PATCH' });
       fetchNotifications();
     } catch (err) {
       console.error(err);

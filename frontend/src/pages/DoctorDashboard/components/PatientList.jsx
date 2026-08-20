@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Stethoscope, User, Clock, AlertTriangle, FileText, Pill } from 'lucide-react';
 
 export default function PatientList({ patients }) {

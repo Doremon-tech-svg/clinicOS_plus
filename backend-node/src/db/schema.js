@@ -6,10 +6,12 @@ async function initSchema() {
       id INTEGER PRIMARY KEY, name TEXT NOT NULL, address TEXT, city TEXT, phone TEXT, total_beds INTEGER DEFAULT 250, access_code TEXT UNIQUE
     )`,
     `CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER, email TEXT UNIQUE, password_hash TEXT, role TEXT, profile_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER, email TEXT UNIQUE, password_hash TEXT, role TEXT, profile_id INTEGER, 
+      approval_status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS staff (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, role TEXT NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1, name TEXT NOT NULL, role TEXT NOT NULL,
       department TEXT, specialization TEXT, experience_yrs INTEGER DEFAULT 0, phone TEXT, email TEXT,
       availability TEXT DEFAULT 'Available', shift TEXT DEFAULT 'Day', avatar_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -21,7 +23,7 @@ async function initSchema() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS patients (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, mrn TEXT UNIQUE NOT NULL,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1, name TEXT NOT NULL, mrn TEXT UNIQUE NOT NULL,
       age INTEGER, gender TEXT, blood_group TEXT, phone TEXT, address TEXT,
       ward TEXT, bed TEXT, room TEXT, department TEXT, diagnosis TEXT,
       risk_score REAL DEFAULT 0, risk_label TEXT DEFAULT 'Low',

@@ -15,7 +15,7 @@ export default function VoiceCommand() {
 
   async function sendCommand(command) {
     try {
-      const res = await fetch('http://localhost:8000/api/voice/command', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/voice/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command })

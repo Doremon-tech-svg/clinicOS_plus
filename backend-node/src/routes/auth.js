@@ -45,6 +45,11 @@ router.post('/login', async (req, res, next) => {
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Invalid email or password' });
 
+    // Check approval
+    if (user.approval_status !== 'approved') {
+      return res.status(403).json({ error: 'Your account is pending admin approval. Please contact your hospital administrator.' });
+    }
+
     // Fetch profile (staff or patient)
     let profile = null;
     if (user.role === 'patient') {
@@ -53,26 +58,30 @@ router.post('/login', async (req, res, next) => {
       profile = await db.get(`SELECT * FROM staff WHERE id=?`, [user.profile_id]);
     }
 
+    // Fetch hospital name
+    const hospital = await db.get(`SELECT name FROM hospital WHERE id=?`, [user.hospital_id]);
+
     // Determine redirect route
     let redirect = ROLE_ROUTES[user.role] || '/';
     if (profile && profile.role === 'dept_head' && profile.department && DEPT_ROUTES[profile.department]) {
       redirect = DEPT_ROUTES[profile.department];
     }
 
-    // Generate JWT
+    // Generate JWT — 24hr expiry
     const token = jwt.sign({ id: user.id, role: user.role, hospital_id: user.hospital_id }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
       success: true,
       token,
       user: {
-        id:           user.id,
-        email:        user.email,
-        role:         user.role,
-        profile_id:   user.profile_id,
-        name:         profile?.name || 'Unknown',
-        department:   profile?.department,
-        hospital_id:  user.hospital_id
+        id:             user.id,
+        email:          user.email,
+        role:           user.role,
+        profile_id:     user.profile_id,
+        name:           profile?.name || 'Unknown',
+        department:     profile?.department,
+        hospital_id:    user.hospital_id,
+        hospital_name:  hospital?.name || 'Unknown Hospital',
       },
       redirect,
       emergencyRole: ['paramedic', 'acc', 'er_doctor', 'dept_head'].includes(user.role)
@@ -161,6 +170,32 @@ router.get('/me', (req, res) => {
   } catch(e) {
     res.status(401).json({ error: 'Invalid token' });
   }
+});
+
+// GET /api/auth/pending-users?hospital_id=X  (admin only — returns users awaiting approval)
+router.get('/pending-users', async (req, res, next) => {
+  try {
+    const { hospital_id } = req.query;
+    if (!hospital_id) return res.status(400).json({ error: 'hospital_id required' });
+    const users = await db.all(
+      `SELECT u.id, u.email, u.role, u.created_at, s.name, s.department FROM users u
+       LEFT JOIN staff s ON s.id = u.profile_id
+       WHERE u.hospital_id=? AND u.approval_status='pending'`,
+      [hospital_id]
+    );
+    res.json({ success: true, users });
+  } catch(e) { next(e); }
+});
+
+// PATCH /api/auth/approve-user  (admin only)
+router.patch('/approve-user', async (req, res, next) => {
+  try {
+    const { user_id, action } = req.body; // action = 'approve' | 'reject'
+    if (!user_id || !action) return res.status(400).json({ error: 'user_id and action required' });
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    await db.run(`UPDATE users SET approval_status=? WHERE id=?`, [status, user_id]);
+    res.json({ success: true, message: `User ${status}` });
+  } catch(e) { next(e); }
 });
 
 // POST /api/auth/logout

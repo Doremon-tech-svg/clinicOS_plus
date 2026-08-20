@@ -11,9 +11,9 @@ export default function App() {
   const fetchData = async () => {
     try {
       const [qRes, sRes, dRes] = await Promise.all([
-        fetch('http://localhost:8000/api/opd/queue'),
-        fetch('http://localhost:8000/api/opd/stats'),
-        fetch('http://localhost:8000/api/opd/doctors')
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/opd/queue`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/opd/stats`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/opd/doctors`)
       ]);
       const qData = await qRes.json();
       const sData = await sRes.json();
@@ -442,7 +442,7 @@ export default function App() {
                               {r.ai_priority}
                             </span>
                             <button className="ml-4 text-xs font-bold" style={{color: '#076c43'}} onClick={() => {
-                              fetch(`http://localhost:8000/api/opd/queue/${r.id}`, { method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'Completed'})}).then(fetchData);
+                              fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/opd/queue/${r.id}`, { method: 'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'Completed'})}).then(fetchData);
                             }}>DONE</button>
                           </td>
                         </tr>
@@ -517,7 +517,7 @@ export default function App() {
                       <button
                         onClick={async () => {
                           if (!tokenInput.trim()) return;
-                          await fetch('http://localhost:8000/api/opd/checkin', {
+                          await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/opd/checkin`, {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ patient_name: tokenInput, department: 'General Medicine' })
                           });

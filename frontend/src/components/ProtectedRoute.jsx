@@ -2,6 +2,20 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
+// Role → their home route
+const ROLE_ROUTES = {
+  admin:       '/admin',
+  acc:         '/emergency',
+  er_doctor:   '/emergency',
+  paramedic:   '/emergency',
+  nurse:       '/nursing',
+  dept_head:   '/doctor',
+  radiologist: '/radiology',
+  lab_tech:    '/lab',
+  pharmacist:  '/pharmacy',
+  patient:     '/patient/portal',
+};
+
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -14,25 +28,14 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     );
   }
 
+  // Not logged in → go to hospital selection
   if (!user) {
-    // Redirect to login but save the attempted URL
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // allowedRoles provided and user's role isn't in it → redirect to their home
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Role not authorized, redirect to their department
-    const roleRoutes = {
-      admin: '/admin',
-      acc: '/emergency',
-      er_doctor: '/emergency',
-      paramedic: '/emergency',
-      nurse: '/nursing',
-      radiologist: '/radiology',
-      lab_tech: '/lab',
-      dept_head: '/doctor',
-      pharmacist: '/pharmacy',
-    };
-    return <Navigate to={roleRoutes[user.role] || '/login'} replace />;
+    return <Navigate to={ROLE_ROUTES[user.role] || '/login'} replace />;
   }
 
   return children;

@@ -120,7 +120,7 @@ export function Settings({ medReminderActive, setMedReminderActive }) {
       </Section>
 
       <Section title="Connection" icon={Wifi}>
-        <Row label="Backend API" sub="http://localhost:8000">
+        <Row label="Backend API" sub={import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}>
           <span style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 20, padding: "2px 8px" }}>● Connected</span>
         </Row>
         <Row label="Blockchain Logger" sub="Audit trail enabled">

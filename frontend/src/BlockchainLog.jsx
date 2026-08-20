@@ -23,7 +23,7 @@ export default function BlockchainLog() {
   async function fetchEvents() {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/api/blockchain/events')
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/blockchain/events`)
       if (res.ok) {
         const data = await res.json()
         if (data.events && data.events.length > 0) setEvents(data.events)

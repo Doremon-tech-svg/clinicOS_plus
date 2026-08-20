@@ -6,8 +6,7 @@ import {
 import { genHash, nowTime } from "./utils";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-const BACKEND = "http://localhost:8000";
-
+const BACKEND = import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com';
 // ─── processVoiceWithAI (Gemini) ──────────────────────────────────────────────
 async function parseCommandWithAI(text) {
   if (!GEMINI_API_KEY) return null;

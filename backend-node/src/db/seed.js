@@ -46,10 +46,10 @@ async function seed() {
     const staffId = r.lastInsertRowid;
     staffIds[s[0]] = staffId;
     
-    // Create user login for staff
+    // Create user login for staff — seeded users are auto-approved
     const email = s[0].toLowerCase().replace(/[^a-z0-9]/g, '') + '@apex.com';
     await db.run(
-      `INSERT INTO users (hospital_id, email, password_hash, role, profile_id) VALUES (?,?,?,?,?)`,
+      `INSERT INTO users (hospital_id, email, password_hash, role, profile_id, approval_status) VALUES (?,?,?,?,?, 'approved')`,
       [1, email, defaultPasswordHash, s[1], staffId]
     );
   }

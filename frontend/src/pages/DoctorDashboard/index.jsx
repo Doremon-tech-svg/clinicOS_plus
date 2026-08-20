@@ -1,3 +1,4 @@
+import { API } from '../../config/api';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import PatientList from './components/PatientList';
@@ -13,7 +14,7 @@ export default function DoctorDashboard() {
     // For demo, we just fetch all patients and filter by doctor ID (user.profile_id)
     const fetchPatients = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/patients');
+        const res = await fetch(API.patients);
         const data = await res.json();
         
         // Ensure the doctor only sees their own patients, or if department head, patients in their dept

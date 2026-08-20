@@ -449,9 +449,9 @@ export default function MaternityDashboard() {
   const fetchData = async () => {
     try {
       const [patRes, bedRes, blockRes] = await Promise.all([
-        fetch('http://localhost:8000/api/maternity/patients'),
-        fetch('http://localhost:8000/api/maternity/beds'),
-        fetch('http://localhost:8000/api/blockchain/events')
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/maternity/patients`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/maternity/beds`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/blockchain/events`)
       ]);
       const pData = await patRes.json();
       const bData = await bedRes.json();
@@ -734,7 +734,7 @@ export default function MaternityDashboard() {
                     ))}
                     {births.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: 'gray', fontSize: '0.875rem' }}>No births registered yet</div>}
                     <button className="register-btn" onClick={() => {
-                      fetch('http://localhost:8000/api/blockchain/log', {
+                      fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/blockchain/log`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'Birth Registered', details: 'Baby Girl Sharma - 3.2kg - Apgar 9/10' })
                       }).then(fetchData);

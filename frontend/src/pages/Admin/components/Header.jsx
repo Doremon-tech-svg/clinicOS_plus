@@ -1,4 +1,4 @@
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Clock, Thermometer } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -15,7 +15,7 @@ export default function Header() {
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30 font-['Manrope']">
       <div className="flex items-center gap-4">
         <h1 className="text-xl font-extrabold tracking-tight text-slate-800">
-          Apex Medical Center
+          {user?.hospital_name || 'Hospital Dashboard'}
         </h1>
         <div className="hidden md:flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>

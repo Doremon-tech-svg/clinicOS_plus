@@ -1,5 +1,5 @@
 export const HOSPITAL = { lat: 28.5672, lng: 77.2100, name: 'AIIMS Delhi' };
-export const API = 'http://localhost:8000';
+export const API = import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com';
 
 export const SEV_DOT  = { Critical: 'bg-red-500',   Moderate: 'bg-amber-400', Stable: 'bg-green-500' };
 export const SEV_TEXT = { Critical: 'text-red-700',  Moderate: 'text-amber-700', Stable: 'text-green-700' };

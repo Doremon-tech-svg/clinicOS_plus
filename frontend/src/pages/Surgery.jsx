@@ -10,9 +10,9 @@ export default function Surgery() {
   const fetchData = async () => {
     try {
       const [otRes, schedRes, auditRes] = await Promise.all([
-        fetch("http://localhost:8000/api/surgery/ot-status"),
-        fetch("http://localhost:8000/api/surgery/schedule"),
-        fetch("http://localhost:8000/api/blockchain/events")
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/surgery/ot-status`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/surgery/schedule`),
+        fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/blockchain/events`)
       ]);
       const otData = await otRes.json();
       const schedData = await schedRes.json();

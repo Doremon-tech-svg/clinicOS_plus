@@ -1,107 +1,135 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MapPin, Loader2, Bed } from 'lucide-react';
+import { Building2, MapPin, Search, Loader2, Bed, ArrowRight, Plus } from 'lucide-react';
+import { API } from '../../config/api';
 
 export default function HospitalSelection() {
   const navigate = useNavigate();
   const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchHospitals = async () => {
-      try {
-        const res = await fetch('http://localhost:8000/api/auth/hospitals');
-        const data = await res.json();
-        if (data.success) {
-          setHospitals(data.hospitals);
-        } else {
-          setError('Failed to load hospitals.');
-        }
-      } catch (err) {
-        setError('Network error connecting to backend.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchHospitals();
+    fetch(API.auth.hospitals)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setHospitals(data.hospitals);
+        else setError('Could not load hospitals.');
+      })
+      .catch(() => setError('Backend connection failed. Please try again.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-[#bc000c]" />
-      </div>
+  // Filter is derived state — recomputed on every query change (dynamic per keystroke)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return hospitals;
+    return hospitals.filter(h =>
+      h.name.toLowerCase().includes(q) ||
+      (h.city || '').toLowerCase().includes(q)
     );
-  }
+  }, [hospitals, query]);
 
   return (
-    <div className="min-h-screen bg-[#f3f3f3] flex flex-col items-center py-12 px-6 font-['Manrope'] text-slate-800">
-      <div className="text-center mb-10 mt-8">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 shadow-xl mb-6">
-          <Building2 className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center font-['Manrope']">
+      {/* Top bar */}
+      <div className="w-full bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-20">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-[#bc000c] flex items-center justify-center">
+            <Building2 className="text-white w-4 h-4" />
+          </div>
+          <span className="font-extrabold text-slate-800 text-lg tracking-tight">
+            ClinicalPulse<span className="text-[#bc000c]">OS</span>
+          </span>
         </div>
-        <h2 className="text-3xl font-black tracking-tight text-slate-900">
-          Select Your Facility
-        </h2>
-        <p className="mt-2 text-sm text-slate-500 font-medium">
-          Choose a hospital network to securely access your workspace.
-        </p>
+        <button
+          onClick={() => navigate('/register-hospital')}
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#bc000c] hover:text-[#9a000a] transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Register Hospital
+        </button>
       </div>
 
-      <div className="w-full max-w-4xl">
-        {error && (
-          <div className="text-sm font-bold text-red-600 bg-red-50 p-4 rounded-xl border border-red-200 mb-6 text-center">
-            {error}
-          </div>
+      <div className="w-full max-w-3xl px-6 py-16">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 mb-3">Select Your Hospital</h1>
+          <p className="text-slate-500 font-medium">Search and choose your facility to securely access your workspace.</p>
+        </div>
+
+        {/* Search box */}
+        <div className="relative mb-6">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by hospital name or city..."
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-14 pr-6 py-5 text-base font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#bc000c]/20 shadow-sm transition-shadow"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 font-bold text-sm"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Results count badge */}
+        {!loading && hospitals.length > 0 && (
+          <p className="text-xs text-slate-400 font-medium mb-4 px-1">
+            {query
+              ? `${filtered.length} of ${hospitals.length} hospitals match "${query}"`
+              : `${hospitals.length} registered facilities`}
+          </p>
         )}
 
-        {hospitals.length === 0 && !error ? (
-          <div className="text-center text-slate-500 bg-white p-10 rounded-3xl shadow-sm border border-slate-200">
-            <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="font-bold text-lg">No hospitals registered yet.</p>
-            <button onClick={() => navigate('/register-hospital')} className="mt-4 px-6 py-2 bg-[#bc000c] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#9a000a]">
-              Register a Hospital Now
-            </button>
+        {/* Results */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-[#bc000c]" />
+            <p className="text-sm text-slate-400 font-medium">Loading hospitals...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-600 font-bold bg-red-50 border border-red-200 p-6 rounded-2xl">
+            {error}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center text-slate-400 font-bold py-16">
+            {query
+              ? <>No hospitals matching <span className="text-slate-600">"{query}"</span></>
+              : 'No hospitals registered yet.'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {hospitals.map(hospital => (
-              <div 
-                key={hospital.id} 
+          <div className="space-y-3">
+            {filtered.map(hospital => (
+              <div
+                key={hospital.id}
                 onClick={() => navigate(`/login/${hospital.id}`)}
-                className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col h-full"
+                className="bg-white rounded-2xl px-6 py-5 border border-slate-200 hover:border-[#bc000c]/30 hover:shadow-lg cursor-pointer group transition-all flex items-center gap-5"
               >
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-[#bc000c] transition-colors">
+                <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-[#bc000c] transition-colors">
                   <Building2 className="w-6 h-6 text-[#bc000c] group-hover:text-white transition-colors" />
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900 mb-2">{hospital.name}</h3>
-                
-                <div className="mt-auto space-y-2 pt-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                    <MapPin className="w-4 h-4 text-slate-400" /> {hospital.city || 'Location unavailable'}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                    <Bed className="w-4 h-4 text-slate-400" /> {hospital.total_beds || 0} Beds Available
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-slate-900 text-base truncate">{hospital.name}</div>
+                  <div className="flex items-center gap-4 mt-1">
+                    <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                      <MapPin className="w-3 h-3 shrink-0" /> {hospital.city || 'Location N/A'}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                      <Bed className="w-3 h-3 shrink-0" /> {hospital.total_beds} Beds
+                    </span>
                   </div>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[#bc000c] font-bold text-sm">
-                  Access Portal <span className="transform group-hover:translate-x-1 transition-transform">→</span>
-                </div>
+                <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-[#bc000c] group-hover:translate-x-1 transition-all shrink-0" />
               </div>
             ))}
           </div>
         )}
-      </div>
-      
-      <div className="mt-12 text-center flex gap-4">
-        <button onClick={() => navigate('/')} className="text-xs font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest transition-colors">
-          Back to Home
-        </button>
-        <button onClick={() => navigate('/register-hospital')} className="text-xs font-bold text-[#bc000c] hover:text-[#9a000a] uppercase tracking-widest transition-colors">
-          Register New Hospital
-        </button>
       </div>
     </div>
   );

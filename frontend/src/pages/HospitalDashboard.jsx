@@ -130,7 +130,7 @@ export default function ClinicalCommandCenter() {
 
   // Fetch bed flow predictions
   useEffect(() => {
-    fetch('http://localhost:8000/api/bed-optimizer')
+    fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/bed-optimizer`)
       .then(res => res.json())
       .then(data => {
         const soon = data.patients?.filter(p => p.predicted_discharge_days <= 1).length || 12;
@@ -141,7 +141,7 @@ export default function ClinicalCommandCenter() {
 
   // Fetch AI logs and blockchain events
   useEffect(() => {
-    fetch('http://localhost:8000/api/admin/ai-audit')
+    fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/admin/ai-audit`)
       .then(res => res.json())
       .then(data => {
         const records = data.records || [];
@@ -170,7 +170,7 @@ export default function ClinicalCommandCenter() {
   useEffect(() => {
     const fetchAmbulance = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/live-alerts');
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com'}/api/live-alerts`);
         if (res.ok) {
           const data = await res.json();
           const active = data.alerts?.filter(a => a.status === 'En Route' || a.status === 'Dispatched') || [];

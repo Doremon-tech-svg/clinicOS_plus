@@ -1,3 +1,4 @@
+import { API } from '../../config/api';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Loader2, Key } from 'lucide-react';
@@ -25,7 +26,7 @@ export default function HospitalRegistration() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/auth/register-hospital', {
+      const res = await fetch(API.auth.registerHospital, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

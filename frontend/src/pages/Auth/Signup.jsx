@@ -1,3 +1,4 @@
+import { API } from '../../config/api';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Shield, ArrowRight, Loader2 } from 'lucide-react';
@@ -25,7 +26,7 @@ export default function Signup() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/auth/signup', {
+      const res = await fetch(API.auth.signup, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -48,8 +49,22 @@ export default function Signup() {
   if (success) {
     return (
       <div className="min-h-screen bg-[#f3f3f3] flex flex-col justify-center py-12 px-6 font-['Manrope'] text-center">
-        <h2 className="text-2xl font-black text-green-600 mb-2">Account Created!</h2>
-        <p className="text-slate-600">Redirecting to login...</p>
+        <div className="max-w-md mx-auto bg-white p-10 rounded-3xl shadow-xl border border-slate-200">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-3xl">⏳</span>
+          </div>
+          <h2 className="text-2xl font-black text-slate-800 mb-3">Request Submitted!</h2>
+          <p className="text-slate-500 font-medium mb-6">
+            Your account request has been sent to the hospital administrator for review.
+            You'll be able to log in once they approve your access.
+          </p>
+          <button
+            onClick={() => navigate('/login')}
+            className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-slate-800"
+          >
+            Back to Login
+          </button>
+        </div>
       </div>
     );
   }
