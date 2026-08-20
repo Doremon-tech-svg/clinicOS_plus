@@ -117,7 +117,7 @@ async function seed() {
     [patientIds['Mr. Ravi Joshi'],   'Mr. Ravi Joshi',   staffIds['Dr. Neha Gupta'], 'Dr. Neha Gupta', 'OT-04','ORIF Tibial Fracture','Completed','Urgent',null],
     [patientIds['Mrs. Geeta Sharma'],'Mrs. Geeta Sharma',staffIds['Dr. Amit Singh'], 'Dr. Amit Singh', 'OT-05','EEG + Medication Adjustment','Scheduled','Elective',null],
   ];
-  for (const s of surgs) await db.run(`INSERT INTO surgeries (patient_id,patient_name,surgeon_id,surgeon_name,ot_room,procedure,status,priority,eta_mins,scheduled_at) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))`, s);
+  for (const s of surgs) await db.run(`INSERT INTO surgeries (patient_id,patient_name,surgeon_id,surgeon_name,ot_room,procedure,status,priority,eta_mins,scheduled_at) VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`, s);
 
   // OPD Queue
   const opdQ = [
