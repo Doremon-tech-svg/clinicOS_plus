@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 8000;
 async function runAutoSeed() {
   try {
     const row = await db.get(`SELECT COUNT(*) as count FROM hospital`);
-    if (!row || row.count === 0) {
+    if (!row || Number(row.count) === 0) {
       console.log('🌱 No hospitals found. Running initial seeds...');
       execSync('node src/db/seed.js', { stdio: 'inherit' });
       execSync('node src/db/seed-hospitals.js', { stdio: 'inherit' });
