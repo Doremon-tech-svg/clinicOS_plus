@@ -95,7 +95,15 @@ async function initSchema() {
     )`,
   ];
 
-  for (const sql of tables) await db.run(sql);
+  for (let sql of tables) {
+    if (db.IS_POSTGRES) {
+      sql = sql.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, 'SERIAL PRIMARY KEY');
+      sql = sql.replace(/INTEGER PRIMARY KEY/g, 'SERIAL PRIMARY KEY');
+      sql = sql.replace(/DATETIME/g, 'TIMESTAMP');
+      sql = sql.replace(/REAL/g, 'DECIMAL');
+    }
+    await db.run(sql);
+  }
   console.log('✅ Schema ready');
 }
 
