@@ -20,11 +20,59 @@ router.post('/command', async (req, res, next) => {
   try {
     const { command, staff_id, patient_id, patient_name, bed, room, ward, department: patientDept, hospital_id = 1 } = req.body;
     if (!command?.trim()) return res.status(400).json({ error:'command required' });
-    const lower   = command.toLowerCase();
-    const matched = VOICE_MAP.find(v => lower.includes(v.keyword));
-    const hash    = '0x'+crypto.createHash('md5').update(command+Date.now()).digest('hex').slice(0,16);
+    const lower = command.toLowerCase();
+    
+    // AI Parsing in Backend using Groq
+    let aiResult = { recognized: false };
+    const groqKey = process.env.GROQ_KEY_1 || process.env.GROQ_KEY_2;
+    if (groqKey) {
+      try {
+        const aiResponse = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${groqKey}`
+          },
+          body: JSON.stringify({
+            model: "llama3-70b-8192",
+            messages: [{
+              role: "system",
+              content: `You are a hospital assistant AI. Parse this command: "${command}".
+Return JSON ONLY:
+{
+  "department": "Pharmacy, Emergency, Cleaning, Respiratory, Cardiology, Surgery, Laboratory, Medical, Nurse, Admin",
+  "action": "brief action description",
+  "urgency": "STAT | High | Medium | Low",
+  "icon": "emoji",
+  "recognized": true
+}
+If totally irrelevant, return {"recognized": false}.`
+            }],
+            temperature: 0.1,
+            max_tokens: 200,
+            response_format: { type: "json_object" }
+          })
+        });
+        const data = await aiResponse.json();
+        if (!aiResponse.ok) {
+          console.error("Groq API Error in command:", data);
+          aiResult = { recognized: false, error: data.error?.message };
+        } else {
+          let raw = data.choices?.[0]?.message?.content || "";
+          raw = raw.replace(/```json|```/gi, "").trim();
+          aiResult = JSON.parse(raw);
+        }
+      } catch (err) {
+        console.error("Backend Groq parsing failed", err);
+      }
+    }
 
-    // Get staff name for order attribution
+    const matched = aiResult.recognized ? 
+      { dept: aiResult.department, action: aiResult.action, icon: aiResult.icon } : 
+      VOICE_MAP.find(v => lower.includes(v.keyword));
+      
+    const hash = '0x'+crypto.createHash('md5').update(command+Date.now()).digest('hex').slice(0,16);
+
     let staffName = 'Nurse';
     if (staff_id) {
       const s = await db.get(`SELECT name FROM staff WHERE id=?`, [staff_id]);
@@ -34,22 +82,107 @@ router.post('/command', async (req, res, next) => {
     await db.run(`INSERT INTO voice_commands (staff_id,command,task,department,status,tx_hash) VALUES (?,?,?,?,?,?)`,
       [staff_id||null, command, matched?.action||'Unknown', matched?.dept||'Unknown', matched?'Completed':'Unrecognized', hash]);
 
-    // ── Auto-create pharmacy order if voice command targets Pharmacy ──
     if (matched && matched.dept === 'Pharmacy') {
-      // Extract medicine name from command (best-effort: strip common phrases)
       const medName = command.replace(/please|need|get|send|bring|give|patient|medicine|medication|iv|fluid|for|the|a|an|urgent|stat|urgently/gi,'').trim().replace(/\s+/g,' ') || matched.action;
-      const priority = lower.includes('stat') || lower.includes('urgent') || lower.includes('immediately') ? 'Stat' : 'Routine';
+      const priority = (aiResult && aiResult.urgency === 'STAT') || lower.includes('stat') || lower.includes('urgent') ? 'Stat' : 'Routine';
       await db.run(
         `INSERT INTO pharmacy_orders (hospital_id,patient_id,patient_name,bed,room,ward,department,medicine_name,quantity,unit,priority,ordered_by,ordered_by_name,source,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [hospital_id, patient_id||null, patient_name||'', bed||'', room||'', ward||'', patientDept||'', medName, 1, 'units', priority, staff_id||null, staffName, 'voice', `Voice command: "${command}"`]
       );
       await notif.create({ type:'pharmacy', title:`${matched.icon} ${matched.action}`, message:`"${command}" — ${patient_name||'Patient'}${bed ? ` · Bed ${bed}` : ''}`, department:'Pharmacy', target_role:'pharmacist' });
+    } else if (matched && matched.dept === 'Surgery') {
+      await notif.create({ type:'surgery', title:`${matched.icon} ${matched.action}`, message:`Voice: "${command}"`, department:'Surgery', target_role:'surgeon' });
     } else if (matched) {
       await notif.create({ type:'task', title:`${matched.icon} ${matched.action}`, message:`Voice: "${command}"`, department:matched.dept, target_role:'nurse' });
     }
 
-    res.json({ success:!!matched, action:matched?.action||'Command not recognized', department:matched?.dept||null, hash, icon:matched?.icon||'❓' });
+    res.json({ success:!!matched, action:matched?.action||'Command not recognized', department:matched?.dept||null, hash, icon:matched?.icon||'❓', isAI: aiResult.recognized });
   } catch(e) { next(e); }
+});
+
+router.post('/chat', async (req, res, next) => {
+  try {
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'text required' });
+
+    const groqKey = process.env.GROQ_KEY_1 || process.env.GROQ_KEY_2;
+    if (!groqKey) {
+      return res.json({ reply: "API Key not configured on the backend server." });
+    }
+
+    const aiResponse = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${groqKey}`
+      },
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [{
+          role: "system",
+          content: "You are a friendly, concise hospital assistant. Keep replies brief."
+        }, {
+          role: "user",
+          content: text
+        }],
+        temperature: 0.7,
+        max_tokens: 150
+      })
+    });
+    
+    const data = await aiResponse.json();
+    if (!aiResponse.ok) {
+      console.error("Groq API Error in chat:", data);
+      return res.json({ reply: `AI Error: ${data.error?.message || 'Unknown error from Groq'}` });
+    }
+    const reply = data.choices?.[0]?.message?.content || "I didn't understand.";
+    res.json({ reply });
+  } catch (err) {
+    console.error("Backend chat failed", err);
+    res.json({ reply: "Connection to AI failed." });
+  }
+});
+
+router.post('/report', async (req, res, next) => {
+  try {
+    const { patient } = req.body;
+    if (!patient) return res.status(400).json({ error: 'patient required' });
+
+    const groqKey = process.env.GROQ_KEY_1 || process.env.GROQ_KEY_2;
+    if (!groqKey) {
+      return res.json({ report: "API Key not configured on the backend server." });
+    }
+
+    const aiResponse = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${groqKey}`
+      },
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [{
+          role: "system",
+          content: "You are a clinical AI. Provide a discharge timeline prediction report based on the clinical data provided. Keep it under 50 words and professional."
+        }, {
+          role: "user",
+          content: `Patient: ${patient.name}, Age: ${patient.age}, Diagnosis: ${patient.diagnosis}. Vitals: HR ${patient.hr}, BP ${patient.bp}, SpO2 ${patient.spo2}%. Fall risk score: ${patient.risk}%.`
+        }],
+        temperature: 0.4
+      })
+    });
+    
+    const data = await aiResponse.json();
+    if (!aiResponse.ok) {
+      console.error("Groq API Error in report:", data);
+      return res.json({ report: `AI Error: ${data.error?.message || 'Unknown error from Groq'}` });
+    }
+    const report = data.choices?.[0]?.message?.content || "Error generating report.";
+    res.json({ report });
+  } catch (err) {
+    console.error("Backend report generation failed", err);
+    res.json({ report: "Error generating report from backend." });
+  }
 });
 
 router.get('/logs', async (req, res, next) => {

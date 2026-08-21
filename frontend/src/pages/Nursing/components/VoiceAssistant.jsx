@@ -1,7 +1,7 @@
 import { Mic, MicOff, Mic2, Loader2 } from "lucide-react";
 import { WARD_COLOR, WARD_BG } from "../constants";
 
-export function VoiceAssistant({ recording, transcript, voiceStatus, aiProcessing, onMic, onQuickCommand }) {
+export function VoiceAssistant({ recording, transcript, voiceStatus, aiProcessing, onMic, onQuickCommand, voiceMode, setVoiceMode }) {
   const quickCmds = ["wheelchair", "crash cart", "discharge", "IV fluid", "oxygen", "code blue"];
 
   return (
@@ -13,6 +13,19 @@ export function VoiceAssistant({ recording, transcript, voiceStatus, aiProcessin
         <span style={{ fontSize: 10, fontWeight: 700, color: aiProcessing ? "#d97706" : "#16a34a", background: aiProcessing ? "#fffbeb" : "#f0fdf4", border: `1px solid ${aiProcessing ? "#fde68a" : "#86efac"}`, borderRadius: 20, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}>
           {aiProcessing ? <><Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} /> Processing</> : "● ONLINE"}
         </span>
+      </div>
+
+      <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 8, padding: 4, marginBottom: 16 }}>
+        <button 
+          onClick={() => setVoiceMode("chat")}
+          style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 11, cursor: "pointer", transition: "all 0.2s", background: voiceMode === "chat" ? "#fff" : "transparent", color: voiceMode === "chat" ? WARD_COLOR : "#64748b", boxShadow: voiceMode === "chat" ? "0 1px 2px rgba(0,0,0,0.05)" : "none" }}>
+          General Assistant
+        </button>
+        <button 
+          onClick={() => setVoiceMode("action")}
+          style={{ flex: 1, padding: "6px 0", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 11, cursor: "pointer", transition: "all 0.2s", background: voiceMode === "action" ? "#fff" : "transparent", color: voiceMode === "action" ? WARD_COLOR : "#64748b", boxShadow: voiceMode === "action" ? "0 1px 2px rgba(0,0,0,0.05)" : "none" }}>
+          Action Commands
+        </button>
       </div>
 
       {/* Mic button */}

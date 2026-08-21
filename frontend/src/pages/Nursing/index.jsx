@@ -76,6 +76,8 @@ export default function Nursing() {
                 transcript={ctx.transcript}
                 voiceStatus={ctx.voiceStatus}
                 aiProcessing={ctx.aiProcessing}
+                voiceMode={ctx.voiceMode}
+                setVoiceMode={ctx.setVoiceMode}
                 handleMic={ctx.handleMic}
                 processVoiceCommand={ctx.processVoiceCommand}
                 toggleTask={ctx.toggleTask}

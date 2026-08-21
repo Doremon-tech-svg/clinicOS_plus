@@ -5,47 +5,48 @@ import {
 } from "./constants";
 import { genHash, nowTime } from "./utils";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const BACKEND = import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com';
-// ─── processVoiceWithAI (Gemini) ──────────────────────────────────────────────
-async function parseCommandWithAI(text) {
-  if (!GEMINI_API_KEY) return null;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a hospital nurse assistant AI. Parse this voice command from a nurse and return JSON only.
-Voice command: "${text}"
 
-Return this JSON structure:
-{
-  "department": "one of: Pharmacy, Emergency, Cleaning, Respiratory, Cardiology, Laboratory, Medical, Nurse, Admin",
-  "action": "brief action description",
-  "taskDesc": "task description for task list",
-  "urgency": "STAT | High | Medium | Low",
-  "location": "extracted room or bed number or null",
-  "icon": "single relevant emoji",
-  "recognized": true
-}
-If you cannot parse a medical command, return {"recognized": false}.
-Only return JSON, no other text.`,
-            }],
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
-        }),
-      }
-    );
+// AI logic is securely handled in the backend now.
+
+// ─── CHIT-CHAT AI ─────────────────────────────────────────────────────────────
+async function chatWithAI(text) {
+  try {
+    const res = await fetch(`${BACKEND}/api/nursing/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
     const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
+    return data.reply;
+  } catch { 
+    return "Connection failed."; 
+  }
+}
+
+// ─── REPORT GENERATOR AI ──────────────────────────────────────────────────────
+export async function generateRiskReport(patient) {
+  const cacheKey = `report_${patient.id}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    const data = JSON.parse(cached);
+    if (Date.now() - data.time < 30 * 60 * 1000) return data.report;
+  }
+
+  try {
+    const res = await fetch(`${BACKEND}/api/nursing/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient })
+    });
+    const data = await res.json();
+    
+    if (data.report && !data.report.includes("API Key not configured")) {
+      localStorage.setItem(cacheKey, JSON.stringify({ time: Date.now(), report: data.report }));
+    }
+    return data.report;
+  } catch { 
+    return "Error generating report. Check your network."; 
   }
 }
 
@@ -73,6 +74,7 @@ export function useNursing() {
   const [aiProcessing,    setAiProcessing]    = useState(false);
   const [demoIdx,         setDemoIdx]         = useState(0);
 
+  const [voiceMode,       setVoiceMode]       = useState("action"); // 'action' or 'chat'
   const recogRef  = useRef(null);
   const toastId   = useRef(0);
 
@@ -119,16 +121,29 @@ export function useNursing() {
           };
         });
 
+        merged.sort((a, b) => b.risk - a.risk);
         setPatients(merged);
-        const tasks = merged.filter(p => p.risk > 40).map(p => ({
-          id: Date.now() + Math.random(),
-          patient: p.name, room: p.room,
-          desc: p.risk > 70 ? "Fall risk assessment due" : "Routine vitals check",
-          priority: p.risk > 70 ? "High" : "Medium",
-          priorityColor: p.risk > 70 ? "#e53e3e" : "#d97706",
-          done: false, source: "AI", time: "NOW", category: "Assessment",
-        }));
-        setTaskList(tasks);
+
+        // Preserve tasks across refresh (reset daily)
+        const today = new Date().toDateString();
+        const savedTasksStr = localStorage.getItem("nursingTasks");
+        const savedDate = localStorage.getItem("nursingTasksDate");
+
+        if (savedTasksStr && savedDate === today) {
+          setTaskList(JSON.parse(savedTasksStr));
+        } else {
+          const tasks = merged.filter(p => p.risk > 40).map(p => ({
+            id: Date.now() + Math.random(),
+            patient: p.name, room: p.room,
+            desc: p.risk > 70 ? "Fall risk assessment due" : "Routine vitals check",
+            priority: p.risk > 70 ? "High" : "Medium",
+            priorityColor: p.risk > 70 ? "#e53e3e" : "#d97706",
+            done: false, source: "AI", time: "NOW", category: "Assessment",
+          }));
+          setTaskList(tasks);
+          localStorage.setItem("nursingTasks", JSON.stringify(tasks));
+          localStorage.setItem("nursingTasksDate", today);
+        }
       } catch (err) {
         console.error("Nursing fetch failed:", err);
       } finally {
@@ -197,63 +212,72 @@ export function useNursing() {
   const processVoiceCommand = useCallback(async (text) => {
     const lower = text.toLowerCase();
 
-    // Try AI parsing first
-    setAiProcessing(true);
-    let aiResult = await parseCommandWithAI(text);
-    setAiProcessing(false);
+    if (voiceMode === "chat") {
+      setAiProcessing(true);
+      setTranscript("Thinking...");
+      const reply = await chatWithAI(text);
+      setAiProcessing(false);
+      setTranscript(`AI: ${reply}`);
+      
+      const utterance = new SpeechSynthesisUtterance(reply);
+      window.speechSynthesis.speak(utterance);
+      return;
+    }
 
-    let matched;
+    // Action mode - Send directly to backend!
+    setAiProcessing(true);
     let location = "—";
     const bedMatch = lower.match(/bed (\w+)|room (\w+)/);
     if (bedMatch) location = bedMatch[1] || bedMatch[2];
 
-    if (aiResult?.recognized) {
-      const hash = genHash();
-      const newTask = {
-        id: Date.now(), patient: location !== "—" ? `Bed ${location}` : "Ward",
-        room: location !== "—" ? location : "—",
-        desc: aiResult.taskDesc, priority: aiResult.urgency === "STAT" ? "High" : aiResult.urgency,
-        priorityColor: aiResult.urgency === "STAT" || aiResult.urgency === "High" ? "#e53e3e" : aiResult.urgency === "Medium" ? "#d97706" : "#2f92d0",
-        done: false, source: "AI Voice", time: nowTime(), category: aiResult.department,
-      };
-      setTaskList(prev => [newTask, ...prev]);
-      logActivity("Gemini AI", `Voice command: "${text}" → ${aiResult.action} → ${aiResult.department}`, "voice", hash);
-      setVoiceLogs(prev => [{ id: Date.now(), time: nowTime(), text, matched: aiResult.department, action: aiResult.action, hash, icon: aiResult.icon, ai: true }, ...prev.slice(0, 49)]);
-      pushToast({ icon: aiResult.icon, title: `✅ ${aiResult.action}`, msg: `Dispatched to ${aiResult.department}. Loc: ${location}`, color: "#2f92d0", hash });
-      setTranscript(`✅ ${aiResult.action} → ${aiResult.department} dept.`);
-      return;
-    }
-
-    // Fallback: keyword matching
-    matched = VOICE_COMMANDS.find(vc => lower.includes(vc.keyword));
-    if (matched) {
-      const newTask = {
-        id: Date.now(), patient: location !== "—" ? `Bed ${location}` : "Ward",
-        room: location !== "—" ? location : "—",
-        desc: matched.taskDesc,
-        priority: matched.keyword === "crash cart" || matched.keyword === "code blue" ? "High" : "Medium",
-        priorityColor: matched.keyword === "crash cart" || matched.keyword === "code blue" ? "#e53e3e" : "#d97706",
-        done: false, source: "Voice", time: nowTime(), category: matched.dept,
-      };
-      setTaskList(prev => [newTask, ...prev]);
-      const hash = genHash();
-      logActivity("Nurse Assistant", `Voice: "${text}" → ${matched.action} → ${matched.dept}`, "voice", hash);
-      setVoiceLogs(prev => [{ id: Date.now(), time: nowTime(), text, matched: matched.dept, action: matched.action, hash, icon: matched.icon, ai: false }, ...prev.slice(0, 49)]);
-      pushToast({ icon: matched.icon, title: `✅ ${matched.action}`, msg: `Dispatched to ${matched.dept}. Loc: ${location}`, color: matched.deptColor, hash });
-      setTranscript(`✅ ${matched.action} → ${matched.dept} dept. Blockchain logged.`);
-
-      if (matched.keyword === "discharge") {
-        const nameMatch = lower.match(/discharge\s+(.+?)(?:\s+room|\s+bed|$)/);
-        if (nameMatch) {
-          const p = patients.find(pt => pt.name.toLowerCase().includes(nameMatch[1].toLowerCase()));
-          if (p) setTimeout(() => setDischargePatient(p), 800);
+    try {
+      const res = await fetch(`${BACKEND}/api/nursing/command`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command: text,
+          bed: location !== "—" ? location : null
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        const newTask = {
+          id: Date.now(), patient: location !== "—" ? `Bed ${location}` : "Ward",
+          room: location !== "—" ? location : "—",
+          desc: data.action, priority: "Medium",
+          priorityColor: "#d97706",
+          done: false, source: data.isAI ? "AI Voice" : "Voice", time: nowTime(), category: data.department,
+        };
+        setTaskList(prev => {
+          const next = [newTask, ...prev];
+          localStorage.setItem("nursingTasks", JSON.stringify(next));
+          return next;
+        });
+        
+        logActivity(data.isAI ? "Gemini AI" : "Nurse Assistant", `Voice command: "${text}" → ${data.action} → ${data.department}`, "voice", data.hash);
+        setVoiceLogs(prev => [{ id: Date.now(), time: nowTime(), text, matched: data.department, action: data.action, hash: data.hash, icon: data.icon, ai: data.isAI }, ...prev.slice(0, 49)]);
+        pushToast({ icon: data.icon, title: `✅ ${data.action}`, msg: `Dispatched to ${data.department}. Loc: ${location}`, color: "#2f92d0", hash: data.hash });
+        setTranscript(`✅ ${data.action} → ${data.department} dept.`);
+        
+        if (text.includes("discharge")) {
+          const nameMatch = lower.match(/discharge\s+(.+?)(?:\s+room|\s+bed|$)/);
+          if (nameMatch) {
+            const p = patients.find(pt => pt.name.toLowerCase().includes(nameMatch[1].toLowerCase()));
+            if (p) setTimeout(() => setDischargePatient(p), 800);
+          }
         }
+      } else {
+        setTranscript(`⚠️ Command not recognized: "${text}". Try "wheelchair for bed 2" or "crash cart".`);
+        pushToast({ icon: "⚠️", title: "Command Unrecognized", msg: text, color: "#d97706" });
       }
-    } else {
-      setTranscript(`⚠️ Command not recognized: "${text}". Try "wheelchair for bed 2" or "crash cart".`);
-      pushToast({ icon: "⚠️", title: "Command Unrecognized", msg: text, color: "#d97706" });
+    } catch (e) {
+      console.error("Backend command failed", e);
+      setTranscript(`⚠️ Network error processing command.`);
+    } finally {
+      setAiProcessing(false);
     }
-  }, [patients, logActivity, pushToast]);
+  }, [patients, logActivity, pushToast, voiceMode]);
 
   // ── Mic ──
   const handleMic = useCallback(() => {
@@ -383,7 +407,7 @@ export function useNursing() {
     explainPatient, setExplainPatient,
     dischargePatient, setDischargePatient,
     bedCount, medReminderActive, setMedReminderActive,
-    aiProcessing, rawBeds,
+    aiProcessing, rawBeds, voiceMode, setVoiceMode,
     // actions
     handleMic, toggleTask, addTask,
     handleMedToggle, handleDischargeConfirm, updatePatient,

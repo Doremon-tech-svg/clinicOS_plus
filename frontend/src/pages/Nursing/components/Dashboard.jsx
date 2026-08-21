@@ -21,7 +21,7 @@ export function Dashboard({
   handleMic, processVoiceCommand, toggleTask, addTask,
   handleMedToggle, onExplain, onDischarge, onEdit,
   acknowledgeAlert, dismissAlert,
-  setActiveTab,
+  setActiveTab, voiceMode, setVoiceMode
 }) {
   const handleQuick = (cmd) => {
     processVoiceCommand(cmd);
@@ -71,6 +71,7 @@ export function Dashboard({
             recording={recording} transcript={transcript}
             voiceStatus={voiceStatus} aiProcessing={aiProcessing}
             onMic={handleMic} onQuickCommand={handleQuick}
+            voiceMode={voiceMode} setVoiceMode={setVoiceMode}
           />
           <TaskPanel taskList={taskList} remaining={remaining} onToggle={toggleTask} onAdd={addTask} />
         </div>

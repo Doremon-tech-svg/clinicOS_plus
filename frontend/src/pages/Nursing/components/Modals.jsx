@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { X, Brain, Lock, LogOut } from "lucide-react";
 import { genHash } from "../utils";
 
@@ -16,7 +17,24 @@ function ShapRow({ factor, score }) {
   );
 }
 
+import { generateRiskReport } from "../useNursing";
+
 export function RiskModal({ patient, onClose }) {
+  const [report, setReport] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    setReport("");
+    setGenerating(false);
+  }, [patient]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    const res = await generateRiskReport(patient);
+    setReport(res);
+    setGenerating(false);
+  };
+
   if (!patient) return null;
   return (
     <div style={{
@@ -36,7 +54,7 @@ export function RiskModal({ patient, onClose }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: 8 }}>
-              <Brain size={18} color={patient.riskColor} /> AI Risk Report
+              <Brain size={18} color={patient.riskColor} /> Fall Risk Assessment
             </div>
             <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>{patient.name} · Room {patient.room}</div>
           </div>
@@ -59,6 +77,27 @@ export function RiskModal({ patient, onClose }) {
           </div>
         </div>
 
+        {/* AI Report Section */}
+        <div style={{ background: "#f8faff", border: "1px solid #dbeafe", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: report ? 12 : 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#1e40af", letterSpacing: 1, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+              <Brain size={14} /> AI Discharge Prediction
+            </div>
+            {!report && (
+              <button 
+                onClick={handleGenerate} disabled={generating}
+                style={{ padding: "6px 12px", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: generating ? "not-allowed" : "pointer" }}>
+                {generating ? "Generating..." : "Generate Report"}
+              </button>
+            )}
+          </div>
+          {report && (
+            <div style={{ fontSize: 12, color: "#1e293b", lineHeight: 1.6 }}>
+              {report}
+            </div>
+          )}
+        </div>
+
         {/* SHAP */}
         <div style={{ background: "#f8faff", borderRadius: 12, padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>
@@ -67,22 +106,8 @@ export function RiskModal({ patient, onClose }) {
           {patient.shapValues?.map(s => <ShapRow key={s.factor} {...s} />)}
         </div>
 
-        {/* Model info */}
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", marginBottom: 4 }}>⚙️ Model: XGBoost v2.1 · Accuracy 94.2%</div>
-          <div style={{ fontSize: 11, color: "#4b5563" }}>Updated every 15 min using real-time vitals, medication schedule, and mobility scores.</div>
-        </div>
-
-        {/* Clinical factors */}
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Clinical Factors</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-          {patient.factors?.map(f => (
-            <span key={f} style={{ fontSize: 11, background: "#f1f5f9", color: "#475569", borderRadius: 20, padding: "4px 12px", fontWeight: 500 }}>{f}</span>
-          ))}
-        </div>
-
         {/* Recommendations */}
-        <div style={{ padding: 12, borderRadius: 10, background: "#fffbeb", border: "1px solid #fde68a", marginBottom: 16 }}>
+        <div style={{ padding: 12, borderRadius: 10, background: "#fffbeb", border: "1px solid #fde68a", marginBottom: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>📋 Recommended Actions</div>
           <ul style={{ margin: "0 0 0 16px", padding: 0, fontSize: 12, color: "#78350f", lineHeight: 1.9 }}>
             <li>Place bed in lowest position with brakes locked</li>
@@ -91,11 +116,6 @@ export function RiskModal({ patient, onClose }) {
             <li>Review and reconcile medications causing dizziness</li>
             {patient.risk > 70 && <li style={{ fontWeight: 700 }}>Activate Falls Prevention Protocol immediately</li>}
           </ul>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Lock size={11} color="#2f92d0" />
-          <span style={{ fontSize: 10, color: "#2f92d0", fontFamily: "monospace" }}>Blockchain verified · {genHash()}</span>
         </div>
       </div>
     </div>
@@ -140,7 +160,7 @@ export function DischargeModal({ patient, onConfirm, onClose }) {
   );
 }
 
-import { useState } from "react";
+
 export function EditPatientModal({ patient, availableBeds, onConfirm, onClose }) {
   if (!patient) return null;
   const [form, setForm] = useState({
