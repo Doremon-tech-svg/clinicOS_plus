@@ -11,32 +11,35 @@ async function seedBeds() {
   let wardsAdded = 0, roomsAdded = 0, bedsAdded = 0;
 
   for (const h of hospitals) {
-    // Check if wards already exist for this hospital
-    const existing = await db.get(`SELECT COUNT(*) as c FROM wards WHERE hospital_id=?`, [h.id]);
-    if (existing && existing.c > 0) continue;
-
-    // Define Wards
+    // Define Wards (including new big wards)
     const wards = [
-      { name: 'Ward A', type: 'General', capacity: 20 },
-      { name: 'Ward B', type: 'Surgical', capacity: 15 },
-      { name: 'Ward C', type: 'ICU', capacity: 10 },
-      { name: 'Maternity Ward', type: 'Maternity', capacity: 15 }
+      { name: 'Ward A', type: 'General', rooms: 4, bedsPerRoom: 5 },
+      { name: 'Ward B', type: 'Surgical', rooms: 4, bedsPerRoom: 4 },
+      { name: 'Ward C', type: 'ICU', rooms: 8, bedsPerRoom: 1 },
+      { name: 'Maternity Ward', type: 'Maternity', rooms: 5, bedsPerRoom: 3 },
+      { name: 'Cardiology (Big Ward)', type: 'Cardiology', rooms: 10, bedsPerRoom: 6 },
+      { name: 'Neurology (Big Ward)', type: 'Neurology', rooms: 8, bedsPerRoom: 5 },
+      { name: 'Pediatrics', type: 'Pediatrics', rooms: 6, bedsPerRoom: 4 },
+      { name: 'Oncology', type: 'Oncology', rooms: 12, bedsPerRoom: 2 }
     ];
 
     for (const w of wards) {
-      const wRes = await db.run(`INSERT INTO wards (hospital_id, name, type, capacity) VALUES (?, ?, ?, ?)`, [h.id, w.name, w.type, w.capacity]);
-      const wardId = wRes.lastInsertRowid || wRes.id; // SQLite vs Postgres handling (Postgres uses RETURNING, but this is a mock. Actually, we need to handle Postgres correctly if it's Supabase)
+      // Check if this specific ward already exists
+      const existingWard = await db.get(`SELECT id FROM wards WHERE hospital_id=? AND name=?`, [h.id, w.name]);
+      if (existingWard) continue;
+
+      const capacity = w.rooms * w.bedsPerRoom;
+      const wRes = await db.run(`INSERT INTO wards (hospital_id, name, type, capacity) VALUES (?, ?, ?, ?)`, [h.id, w.name, w.type, capacity]);
       
-      // Let's get the ward ID safely
       const insertedWard = await db.get(`SELECT id FROM wards WHERE hospital_id=? AND name=? ORDER BY id DESC LIMIT 1`, [h.id, w.name]);
       const wId = insertedWard.id;
       wardsAdded++;
 
       // Create Rooms for the Ward
-      const numRooms = w.type === 'ICU' ? 5 : 4;
-      for (let r = 1; r <= numRooms; r++) {
-        const roomNum = `${w.name.split(' ')[1] || 'M'}-${r}`;
-        const roomType = w.type === 'ICU' ? 'Private' : 'Shared';
+      for (let r = 1; r <= w.rooms; r++) {
+        const roomPrefix = w.name.split(' ')[0].substring(0, 3).toUpperCase();
+        const roomNum = `${roomPrefix}-${r}`;
+        const roomType = w.bedsPerRoom === 1 ? 'Private' : 'Shared';
         
         await db.run(`INSERT INTO rooms (hospital_id, ward_id, room_number, type) VALUES (?, ?, ?, ?)`, [h.id, wId, roomNum, roomType]);
         const insertedRoom = await db.get(`SELECT id FROM rooms WHERE hospital_id=? AND ward_id=? AND room_number=? ORDER BY id DESC LIMIT 1`, [h.id, wId, roomNum]);
@@ -44,8 +47,7 @@ async function seedBeds() {
         roomsAdded++;
 
         // Create Beds for the Room
-        const numBeds = roomType === 'Private' ? 1 : 4;
-        for (let b = 1; b <= numBeds; b++) {
+        for (let b = 1; b <= w.bedsPerRoom; b++) {
           const bedNum = `${roomNum}-B${b}`;
           await db.run(`INSERT INTO beds (hospital_id, ward_id, room_id, bed_number, status) VALUES (?, ?, ?, ?, 'Available')`, [h.id, wId, rId, bedNum]);
           bedsAdded++;
