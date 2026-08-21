@@ -6,7 +6,7 @@ import { PatientCard } from "./components/PatientCard";
 import { VitalsView } from "./components/VitalsView";
 import { TaskPanel } from "./components/TaskPanel";
 import { Schedule } from "./components/Schedule";
-import { WardView } from "./components/WardView";
+import { RoomDashboard } from "./components/RoomDashboard";
 import { VoiceLogs } from "./components/VoiceLogs";
 import { CriticalAlerts } from "./components/CriticalAlerts";
 import { Profile } from "./components/Profile";
