@@ -4,7 +4,7 @@ import { WARD_COLOR } from "../constants";
 
 export function VoiceLogs({ voiceLogs, activityLog }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
         <Mic2 size={16} color={WARD_COLOR} /> Voice Logs & Activity
       </div>

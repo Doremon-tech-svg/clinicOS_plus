@@ -18,7 +18,7 @@ export function Schedule({ schedule, onToggle }) {
   const pct     = Math.round((done / schedule.length) * 100);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
           <Calendar size={16} color="#2f92d0" /> Today's Schedule

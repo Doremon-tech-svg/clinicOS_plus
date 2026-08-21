@@ -41,7 +41,7 @@ export function Support() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 620 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
         <HelpCircle size={16} color={WARD_COLOR} /> Help & Support
       </div>
@@ -51,7 +51,7 @@ export function Support() {
         {[
           { icon: Phone, label: "Emergency Helpline", value: "+91 1800-HEALTH", color: "#e53e3e" },
           { icon: Phone, label: "IT Support", value: "+91 98765 11111", color: WARD_COLOR },
-          { icon: Mail, label: "Nursing Office", value: "nursing@aetherhealth.in", color: "#7c3aed" },
+          { icon: Mail, label: "Nursing Office", value: "nursing@clinicalpulseos.in", color: "#7c3aed" },
           { icon: MessageSquare, label: "Live Chat", value: "Available 24/7", color: "#16a34a" },
         ].map((c, i) => (
           <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: "14px 14px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -107,7 +107,7 @@ export function Support() {
 
       {/* Version info */}
       <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "12px 14px", fontSize: 11, color: "#94a3b8" }}>
-        AetherHealth Nursing Station v2.4.1 · Last updated Aug 2026 · Powered by Gemini AI & XGBoost
+        ClinicalPulseOS Nursing Station v2.4.1 · Last updated Aug 2026
       </div>
     </div>
   );

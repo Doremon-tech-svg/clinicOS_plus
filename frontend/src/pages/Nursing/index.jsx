@@ -131,7 +131,7 @@ export default function Nursing() {
             )}
 
             {ctx.activeTab === "tasks" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 800, margin: "0 auto", width: "100%" }}>
                 <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>All Tasks</h2>
                 <div style={{ minHeight: 600 }}>
                   <TaskPanel taskList={ctx.taskList} remaining={ctx.remaining} onToggle={ctx.toggleTask} onAdd={ctx.addTask} />
@@ -152,7 +152,7 @@ export default function Nursing() {
             )}
 
             {ctx.activeTab === "critical" && (
-              <div style={{ maxWidth: 680 }}>
+              <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
                 <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0f172a", marginBottom: 16 }}>Critical Alerts</h2>
                 <CriticalAlerts
                   alerts={ctx.alerts}

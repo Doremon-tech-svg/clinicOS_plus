@@ -23,7 +23,7 @@ export function Profile() {
   const [editing, setEditing] = useState(false);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 600 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 800, margin: "0 auto", width: "100%" }}>
       <div style={{ fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", gap: 7 }}>
         <User size={16} color={WARD_COLOR} /> My Profile
       </div>
