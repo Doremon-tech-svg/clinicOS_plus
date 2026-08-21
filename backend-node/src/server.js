@@ -10,8 +10,15 @@ async function runAutoSeed() {
       console.log('🌱 Partial or empty database detected. Running initial seeds...');
       execSync('node src/db/seed.js', { stdio: 'inherit' });
       execSync('node src/db/seed-hospitals.js', { stdio: 'inherit' });
+      console.log('✅ Base auto-seeding complete.');
+    }
+    
+    // Specifically check pharmacy stock to ensure production DB gets updated
+    const pRow = await db.get(`SELECT COUNT(*) as count FROM pharmacy_stock`);
+    if (!pRow || Number(pRow.count) === 0) {
+      console.log('💊 Pharmacy stock empty. Running pharmacy seed...');
       execSync('node src/db/seed-pharmacy.js', { stdio: 'inherit' });
-      console.log('✅ Auto-seeding complete.');
+      console.log('✅ Pharmacy seeding complete.');
     }
   } catch (err) {
     console.error('⚠️ Auto-seeding check failed (database might not be initialized yet).');
