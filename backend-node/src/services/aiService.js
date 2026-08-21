@@ -26,7 +26,7 @@ async function callGemini(prompt) {
     const key = GEMINI_KEYS[(geminiIdx + attempt) % GEMINI_KEYS.length];
     try {
       const genai  = new GoogleGenerativeAI(key);
-      const model  = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model  = genai.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const result = await model.generateContent(prompt);
       geminiIdx = (geminiIdx + attempt + 1) % GEMINI_KEYS.length;
       return result.response.text();
@@ -46,7 +46,7 @@ async function callGroq(prompt, maxTokens = 800) {
     try {
       const client = new Groq({ apiKey: key });
       const resp   = await client.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: 'qwen/qwen3.6-27b',
         max_tokens: maxTokens,
         temperature: 0.3,
         messages: [{ role: 'user', content: prompt }],
