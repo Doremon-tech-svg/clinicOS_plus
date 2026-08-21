@@ -72,7 +72,7 @@ export function Sidebar({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen, 
             <div style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(135deg,${WARD_COLOR},#1a6bbf)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Heart size={14} color="#fff" />
             </div>
-            <div style={{ fontWeight: 900, fontSize: 15, color: "#1e293b" }}>AetherHealth</div>
+            <div style={{ fontWeight: 900, fontSize: 15, color: "#1e293b" }}>ClinicalPulseOS</div>
           </div>
           <X size={16} color="#94a3b8" style={{ cursor: "pointer" }} onClick={() => setSidebarOpen(false)} />
         </div>
@@ -110,7 +110,7 @@ export function Sidebar({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen, 
         {/* HIPAA badge */}
         <div style={{ padding: "10px 18px 14px", borderTop: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}>
           <Shield size={11} color="#16a34a" />
-          <span style={{ fontSize: 10, color: "#94a3b8" }}>HIPAA Compliant · Blockchain Secured</span>
+          <span style={{ fontSize: 10, color: "#94a3b8" }}>HIPAA Compliant</span>
         </div>
       </aside>
     </>

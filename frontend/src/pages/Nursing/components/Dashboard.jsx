@@ -19,7 +19,7 @@ export function Dashboard({
   highRisk, pendingMeds, remaining, occupancyPct, criticalAlerts, bedCount,
   recording, transcript, voiceStatus, aiProcessing,
   handleMic, processVoiceCommand, toggleTask, addTask,
-  handleMedToggle, onExplain, onDischarge,
+  handleMedToggle, onExplain, onDischarge, onEdit,
   acknowledgeAlert, dismissAlert,
   setActiveTab,
 }) {
@@ -36,8 +36,8 @@ export function Dashboard({
             Nurse Station <span style={{ color: WARD_COLOR }}>— Blue Zone</span>
           </h1>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "pulse 2s infinite" }} />
-            Gemini AI Active · XGBoost Fall Risk Model v2.1 · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -109,6 +109,7 @@ export function Dashboard({
                 onDischarge={() => onDischarge(p)}
                 onExplain={() => onExplain(p)}
                 onMedToggle={handleMedToggle}
+                onEdit={() => onEdit(p)}
               />
             ))
           )}

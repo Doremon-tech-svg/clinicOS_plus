@@ -25,7 +25,7 @@ export function Header({ time, activeTab, setActiveTab, setSidebarOpen, critical
           <Menu size={18} color="#64748b" />
         </button>
         <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
-        <div style={{ fontWeight: 900, fontSize: 15, color: WARD_COLOR, letterSpacing: -0.3 }}>AetherHealth</div>
+        <div style={{ fontWeight: 900, fontSize: 15, color: WARD_COLOR, letterSpacing: -0.3 }}>ClinicalPulseOS</div>
         <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
         <div style={{ display: "flex", gap: 2 }}>
           {TAB_ITEMS.map(tab => (
@@ -51,16 +51,15 @@ export function Header({ time, activeTab, setActiveTab, setSidebarOpen, critical
             🚨 {criticalAlerts} Alert{criticalAlerts > 1 ? "s" : ""}
           </div>
         )}
-        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "pulse 2s infinite" }} />
-          AI Online
-        </div>
         <NotificationBell />
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: "#1e293b" }}>{time}</div>
           <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Night Shift</div>
         </div>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg,${WARD_COLOR},#1a6bbf)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
+        <div 
+          onClick={() => setActiveTab("profile")}
+          style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg,${WARD_COLOR},#1a6bbf)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}
+        >
           <User size={15} />
         </div>
       </div>

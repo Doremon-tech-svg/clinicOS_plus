@@ -83,6 +83,7 @@ export default function Nursing() {
                 handleMedToggle={ctx.handleMedToggle}
                 onExplain={ctx.setExplainPatient}
                 onDischarge={ctx.setDischargePatient}
+                onEdit={setEditPatient}
                 acknowledgeAlert={ctx.acknowledgeAlert}
                 dismissAlert={ctx.dismissAlert}
                 setActiveTab={ctx.setActiveTab}

@@ -11,7 +11,7 @@ const INITIAL_PROFILE = {
   experience: "8 years",
   specialization: "ICU & Critical Care",
   phone: "+91 98765 43210",
-  email: "priya.sharma@aetherhealth.in",
+  email: "priya.sharma@clinicalpulseos.in",
   certifications: ["ACLS Certified", "BLS Certified", "PALS Certified", "IV Therapy"],
   skills: ["Critical Care", "Medication Administration", "Wound Care", "Patient Assessment", "Fall Prevention", "Emergency Response"],
   supervisor: "Dr. Ramesh Kumar (HOD)",
@@ -99,6 +99,13 @@ export function Profile() {
           ))}
         </div>
       </div>
+
+      <button 
+        onClick={() => window.location.href = '/'}
+        style={{ marginTop: 10, padding: "12px", borderRadius: 10, background: "#ef4444", color: "#fff", fontWeight: 700, border: "none", cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}
+      >
+        <User size={16} /> Logout
+      </button>
     </div>
   );
 }
