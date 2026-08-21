@@ -147,6 +147,10 @@ export default function Nursing() {
               <WardView patients={ctx.patients} bedCount={ctx.bedCount} rawBeds={ctx.rawBeds} />
             )}
 
+            {ctx.activeTab === "rooms" && (
+              <RoomDashboard patients={ctx.patients} bedCount={ctx.bedCount} rawBeds={ctx.rawBeds} />
+            )}
+
             {ctx.activeTab === "voicelogs" && (
               <VoiceLogs voiceLogs={ctx.voiceLogs} activityLog={ctx.activityLog} />
             )}

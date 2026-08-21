@@ -3,8 +3,8 @@ import NotificationBell from "../../../components/NotificationBell";
 import { WARD_COLOR } from "../constants";
 
 export function Header({ time, activeTab, setActiveTab, setSidebarOpen, criticalAlerts }) {
-  const TAB_ITEMS = ["Ward View", "Patients", "Schedules", "Vitals"];
-  const tabMap = { "Ward View": "ward", "Patients": "patients", "Schedules": "schedule", "Vitals": "vitals" };
+  const TAB_ITEMS = ["Ward View", "Rooms", "Patients", "Schedules", "Vitals"];
+  const tabMap = { "Ward View": "ward", "Rooms": "rooms", "Patients": "patients", "Schedules": "schedule", "Vitals": "vitals" };
 
   return (
     <header style={{
