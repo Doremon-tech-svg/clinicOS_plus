@@ -42,7 +42,7 @@ export default function App() {
           {/* Protected Admin Portal */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPortal /></ProtectedRoute>} />
 
-          {/* Doctor Dashboard */}
+          {/* Doctor Dashboard — er_doctor and dept_head only (ER tab is inside) */}
           <Route path="/doctor" element={<ProtectedRoute allowedRoles={['dept_head', 'er_doctor']}><DoctorDashboard /></ProtectedRoute>} />
 
           {/* Department Routes — role-locked */}
@@ -52,7 +52,8 @@ export default function App() {
           <Route path="/opd"       element={<ProtectedRoute allowedRoles={['dept_head', 'er_doctor', 'nurse', 'admin']}><OPD /></ProtectedRoute>} />
           <Route path="/radiology" element={<ProtectedRoute allowedRoles={['radiologist', 'admin']}><Radiology /></ProtectedRoute>} />
           <Route path="/surgery"   element={<ProtectedRoute allowedRoles={['dept_head', 'er_doctor', 'nurse', 'admin']}><Surgery /></ProtectedRoute>} />
-          <Route path="/emergency" element={<ProtectedRoute allowedRoles={['paramedic', 'acc', 'er_doctor', 'dept_head', 'nurse', 'admin']}><Emergency /></ProtectedRoute>} />
+          {/* Emergency: paramedic/acc/dispatcher/admin ONLY — ER doctor goes to /doctor */}
+          <Route path="/emergency" element={<ProtectedRoute allowedRoles={['paramedic', 'acc', 'dispatcher', 'admin']}><Emergency /></ProtectedRoute>} />
           <Route path="/pharmacy"  element={<ProtectedRoute allowedRoles={['pharmacist', 'admin']}><Pharmacy /></ProtectedRoute>} />
 
           {/* Optional: Patient Chat */}

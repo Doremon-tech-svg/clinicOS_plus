@@ -1,3 +1,4 @@
+// Shared constants for Emergency module
 export const HOSPITAL = { lat: 28.5672, lng: 77.2100, name: 'AIIMS Delhi' };
 export const API = import.meta.env.VITE_API_URL || 'https://codewizrds-deploy.onrender.com';
 
@@ -13,11 +14,21 @@ export const STATUS_COLOR = {
   Completed:     'bg-slate-100 text-slate-600',
 };
 
-export const ROLES = [
-  { value: 'Paramedic', label: '🚑 Paramedic' },
-  { value: 'ACC',       label: '📡 ACC (Dispatch)' },
-  { value: 'Doctor',    label: '🩺 ER Doctor' },
-];
+export const FLEET_COLOR = {
+  Available:   'bg-green-100 text-green-700 border-green-200',
+  Busy:        'bg-red-100 text-red-700 border-red-200',
+  Maintenance: 'bg-slate-100 text-slate-500 border-slate-200',
+};
+
+// Role → view mapping (no user-switching allowed)
+export const ROLE_VIEW = {
+  paramedic: 'Paramedic',
+  acc:       'ACC',
+  dispatcher:'ACC',
+  admin:     'ACC',
+  er_doctor: 'Doctor',
+  dept_head: 'Doctor',
+};
 
 export const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
@@ -33,4 +44,6 @@ export const STYLES = `
   }
   .leaflet-pane, .leaflet-control { z-index: 10 !important; }
   .leaflet-top, .leaflet-bottom   { z-index: 11 !important; }
+  .slide-in { animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 `;

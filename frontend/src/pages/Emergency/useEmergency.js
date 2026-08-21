@@ -7,7 +7,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-export function useEmergency() {
+export function useEmergency(userRole, userId) {
   // ── Input state ──
   const [conditionInput, setConditionInput] = useState('');
   const [etaInput, setEtaInput]             = useState('');
@@ -24,7 +24,7 @@ export function useEmergency() {
   const [recommendedDepts, setRecommendedDepts] = useState([]);
 
   // ── Alert state ──
-  const [alertStatus, setAlertStatus]   = useState(null); // success | error
+  const [alertStatus, setAlertStatus]   = useState(null);
   const [blockchainTx, setBlockchainTx] = useState('');
   const [isSending, setIsSending]       = useState(false);
 
@@ -35,6 +35,9 @@ export function useEmergency() {
   const [staff, setStaff]               = useState([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
 
+  // ── Paramedic active run ──
+  const [activeRun, setActiveRun]       = useState(null);
+
   // ── GPS state ──
   const [ambulancePos, setAmbulancePos] = useState(null);
   const [gpsETA, setGpsETA]             = useState(null);
@@ -43,17 +46,18 @@ export function useEmergency() {
   const recognitionRef = useRef(null);
   const lastAiDataRef  = useRef(null);
 
-  // ── Fetch live alerts (AI-generated feed) ──
+  const isParamedic  = userRole === 'paramedic';
+  const isDispatcher = ['acc','dispatcher','admin'].includes(userRole);
+
+  // ── Fetch helpers ──
   const fetchLiveAlerts = useCallback(async () => {
     setAlertsLoading(true);
     try {
       const res = await fetch(`${API}/api/emergency/live-alerts`);
       if (res.ok) { const d = await res.json(); setLiveAlerts(d.alerts || []); }
-    } catch {}
-    finally { setAlertsLoading(false); }
+    } catch {} finally { setAlertsLoading(false); }
   }, []);
 
-  // ── Fetch real DB alerts ──
   const fetchDbAlerts = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/ambulance/alerts`);
@@ -61,7 +65,6 @@ export function useEmergency() {
     } catch {}
   }, []);
 
-  // ── Fetch fleet ──
   const fetchFleet = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/ambulance/fleet`);
@@ -69,7 +72,6 @@ export function useEmergency() {
     } catch {}
   }, []);
 
-  // ── Fetch staff (doctors + nurses) ──
   const fetchStaff = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/staff`);
@@ -77,12 +79,25 @@ export function useEmergency() {
     } catch {}
   }, []);
 
+  // Paramedic polls their active run
+  const fetchMyRun = useCallback(async () => {
+    if (!isParamedic || !userId) return;
+    try {
+      const res = await fetch(`${API}/api/ambulance/dispatch/my?paramedic_id=${userId}`);
+      if (res.ok) { const d = await res.json(); setActiveRun(d.run || null); }
+    } catch {}
+  }, [isParamedic, userId]);
+
   // ── Poll everything ──
   useEffect(() => {
     fetchLiveAlerts(); fetchDbAlerts(); fetchFleet(); fetchStaff();
-    const id = setInterval(() => { fetchLiveAlerts(); fetchDbAlerts(); fetchFleet(); }, 20000);
+    if (isParamedic) fetchMyRun();
+    const id = setInterval(() => {
+      fetchLiveAlerts(); fetchDbAlerts(); fetchFleet();
+      if (isParamedic) fetchMyRun();
+    }, 15000);
     return () => clearInterval(id);
-  }, [fetchLiveAlerts, fetchDbAlerts, fetchFleet, fetchStaff]);
+  }, [fetchLiveAlerts, fetchDbAlerts, fetchFleet, fetchStaff, fetchMyRun, isParamedic]);
 
   // ── GPS watch ──
   useEffect(() => {
@@ -129,6 +144,17 @@ export function useEmergency() {
     finally { setIsSending(false); }
   }, [conditionInput, etaInput, severity, fetchDbAlerts]);
 
+  // ── Dispatch ambulance (dispatcher) ──
+  const dispatchRun = useCallback(async ({ location, ambulance_id, condition, eta, severity: sev }) => {
+    try {
+      const res = await fetch(`${API}/api/ambulance/dispatch`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location, ambulance_id, condition, eta, severity: sev }),
+      });
+      if (res.ok) { fetchDbAlerts(); fetchFleet(); }
+    } catch {}
+  }, [fetchDbAlerts, fetchFleet]);
+
   // ── AI parse ──
   const autoFillWithAI = useCallback(async (inputText) => {
     if (!inputText.trim()) return;
@@ -168,6 +194,19 @@ export function useEmergency() {
   };
   const stopVoice = () => { recognitionRef.current?.stop(); setIsListening(false); };
 
+  // ── Voice command for paramedic quick status ──
+  const handleVoiceCommand = useCallback(async (cmdText) => {
+    if (!activeRun) return;
+    const lower = cmdText.toLowerCase();
+    let newStatus = null;
+    if (lower.includes('en route') || lower.includes('on the way')) newStatus = 'En Route';
+    else if (lower.includes('patient reached') || lower.includes('arrived') || lower.includes('reached')) newStatus = 'Arrived';
+    else if (lower.includes('returning') || lower.includes('return to base') || lower.includes('completed')) newStatus = 'Completed';
+    if (newStatus) await patchAlert(activeRun.id, newStatus);
+    // Also try autoFill for report
+    else autoFillWithAI(cmdText);
+  }, [activeRun]);
+
   // ── Patch alert lifecycle ──
   const patchAlert = useCallback(async (id, status, extra = {}) => {
     try {
@@ -176,8 +215,9 @@ export function useEmergency() {
         body: JSON.stringify({ status, ...extra }),
       });
       fetchDbAlerts();
+      if (isParamedic) fetchMyRun();
     } catch {}
-  }, [fetchDbAlerts]);
+  }, [fetchDbAlerts, fetchMyRun, isParamedic]);
 
   // ── Mark fleet unit ──
   const markFleet = useCallback(async (id, status) => {
@@ -186,6 +226,25 @@ export function useEmergency() {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
+      fetchFleet();
+    } catch {}
+  }, [fetchFleet]);
+
+  // ── Add fleet unit ──
+  const addFleet = useCallback(async (data) => {
+    try {
+      await fetch(`${API}/api/ambulance/fleet`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      fetchFleet();
+    } catch {}
+  }, [fetchFleet]);
+
+  // ── Remove fleet unit ──
+  const removeFleet = useCallback(async (id) => {
+    try {
+      await fetch(`${API}/api/ambulance/fleet/${id}`, { method: 'DELETE' });
       fetchFleet();
     } catch {}
   }, [fetchFleet]);
@@ -207,21 +266,18 @@ export function useEmergency() {
   const nurses  = staff.filter(s => s.role === 'nurse' && s.availability === 'Available');
 
   return {
-    // input
     conditionInput, setConditionInput, etaInput, setEtaInput,
     severity, setSeverity, additionalNotes, setAdditionalNotes,
-    // voice/AI
     isListening, transcript, isProcessing, aiConfidence,
     aiPrep, clinicalNote, recommendedDepts,
-    startVoice, stopVoice, autoFillWithAI,
-    // alert
+    startVoice, stopVoice, autoFillWithAI, handleVoiceCommand,
     alertStatus, blockchainTx, isSending, sendEmergencyAlert, patchAlert,
-    // live data
     liveAlerts, dbAlerts, fleet, staff, doctors, nurses, alertsLoading,
-    markFleet, fetchDbAlerts,
-    // gps
+    markFleet, addFleet, removeFleet, fetchDbAlerts,
     ambulancePos, gpsETA, gpsStatus, displayETA,
-    // derived
     routeOptions,
+    activeRun, fetchMyRun,
+    dispatchRun,
+    isParamedic, isDispatcher,
   };
 }
