@@ -144,7 +144,7 @@ export default function Nursing() {
             )}
 
             {ctx.activeTab === "ward" && (
-              <WardView patients={ctx.patients} bedCount={ctx.bedCount} />
+              <WardView patients={ctx.patients} bedCount={ctx.bedCount} rawBeds={ctx.rawBeds} />
             )}
 
             {ctx.activeTab === "voicelogs" && (
