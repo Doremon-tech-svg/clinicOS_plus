@@ -36,7 +36,7 @@ router.post('/command', async (req, res, next) => {
               "Authorization": `Bearer ${groqKey}`
             },
             body: JSON.stringify({
-              model: "llama-3.3-70b-versatile",
+              model: "openai/gpt-oss-120b",
               messages: [
                 {
                   role: "system",
@@ -136,7 +136,7 @@ router.post('/chat', async (req, res, next) => {
         "Authorization": `Bearer ${groqKey}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [{
           role: "system",
           content: "You are a friendly, concise hospital assistant. Keep replies brief."
@@ -179,7 +179,7 @@ router.post('/report', async (req, res, next) => {
         "Authorization": `Bearer ${groqKey}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [{
           role: "system",
           content: "You are a clinical AI. Provide a discharge timeline prediction report based on the clinical data provided. Keep it under 50 words and professional."
