@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Zap, Plus, Trash2, Loader2, Edit2, Check } from 'lucide-react';
-import { FLEET_COLOR } from '../constants';
+import { FLEET_COLOR } from './constants';
 
 function FleetStats({ fleet }) {
   const total = fleet.length;

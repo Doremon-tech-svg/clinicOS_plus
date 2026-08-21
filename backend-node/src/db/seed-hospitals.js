@@ -133,6 +133,24 @@ async function seedMoreHospitals() {
 
     console.log(`✅ Added: ${h.name} (code: ${h.code})`);
     added++;
+
+    // Seed realistic fleet for each hospital
+    const fleetTemplates = [
+      { unit_name: 'Unit Alpha-1', vehicle_reg: `${h.code.slice(0,3)}-ALS-001`, vehicle_type: 'ALS',      driver_name: 'Ramesh Kumar',  driver_phone: '9811001001', status: 'Available' },
+      { unit_name: 'Unit Bravo-2', vehicle_reg: `${h.code.slice(0,3)}-BLS-002`, vehicle_type: 'BLS',      driver_name: 'Suresh Yadav',  driver_phone: '9811001002', status: 'Available' },
+      { unit_name: 'Unit Charlie-3',vehicle_reg:`${h.code.slice(0,3)}-ALS-003`, vehicle_type: 'ALS',      driver_name: 'Mohan Tiwari', driver_phone: '9811001003', status: 'Busy'      },
+      { unit_name: 'Unit Delta-4',  vehicle_reg: `${h.code.slice(0,3)}-NIC-004`, vehicle_type: 'NICU',    driver_name: 'Dinesh Patel', driver_phone: '9811001004', status: 'Available' },
+      { unit_name: 'Unit Echo-5',   vehicle_reg: `${h.code.slice(0,3)}-BLS-005`, vehicle_type: 'BLS',     driver_name: 'Vijay Singh',  driver_phone: '9811001005', status: 'Maintenance' },
+    ];
+    for (const f of fleetTemplates) {
+      const fExists = await db.get(`SELECT id FROM ambulances WHERE vehicle_reg=?`, [f.vehicle_reg]);
+      if (!fExists) {
+        await db.run(
+          `INSERT INTO ambulances (hospital_id, unit_name, vehicle_reg, vehicle_type, status, driver_name, driver_phone) VALUES (?,?,?,?,?,?,?)`,
+          [hId, f.unit_name, f.vehicle_reg, f.vehicle_type, f.status, f.driver_name, f.driver_phone]
+        );
+      }
+    }
   }
 
   console.log(`\n🏥 Done. ${added} new hospitals added.`);

@@ -95,7 +95,7 @@ router.patch('/fleet/:id', async (req, res, next) => {
     if (driver_phone !== undefined) { fields.push('driver_phone=?'); vals.push(driver_phone); }
     if (paramedic_id !== undefined) { fields.push('paramedic_id=?'); vals.push(paramedic_id); }
     if (!fields.length) return res.status(400).json({ error:'nothing to update' });
-    fields.push("updated_at=datetime('now')");
+    fields.push("updated_at=CURRENT_TIMESTAMP");
     vals.push(req.params.id);
     await db.run(`UPDATE ambulances SET ${fields.join(',')} WHERE id=?`, vals);
     res.json({ success:true });
@@ -135,7 +135,7 @@ router.post('/dispatch', async (req, res, next) => {
       `INSERT INTO emergency_alerts (ambulance_id,ambulance_unit,condition_summary,severity,dispatched_location,eta_minutes,assigned_paramedic_id,status,blockchain_tx,departments,preparation) VALUES (?,?,?,?,?,?,?,'Dispatched',?,'[]','[]')`,
       [ambulance_id, amb.unit_name, condition||'Dispatch run', severity, location, eta, paramedic_id||amb.paramedic_id||null, tx]
     );
-    await db.run(`UPDATE ambulances SET status='Busy', current_alert_id=?, updated_at=datetime('now') WHERE id=?`, [r.lastInsertRowid, ambulance_id]);
+    await db.run(`UPDATE ambulances SET status='Busy', current_alert_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, [r.lastInsertRowid, ambulance_id]);
     // Notify paramedic
     await notif.create({ type:'dispatch', title:`🚑 Dispatch — ${amb.unit_name}`, message:`Location: ${location}. ETA ~${eta} min. Condition: ${condition||'N/A'}`, department:'Emergency', target_role:'paramedic', target_user_id: paramedic_id||null });
     res.json({ success:true, alert_id:r.lastInsertRowid, ambulance:amb.unit_name, blockchain_tx:tx });

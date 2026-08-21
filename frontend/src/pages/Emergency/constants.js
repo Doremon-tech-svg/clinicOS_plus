@@ -21,13 +21,12 @@ export const FLEET_COLOR = {
 };
 
 // Role → view mapping (no user-switching allowed)
+// er_doctor/dept_head are blocked at router level — they never reach this page
 export const ROLE_VIEW = {
   paramedic: 'Paramedic',
   acc:       'ACC',
   dispatcher:'ACC',
   admin:     'ACC',
-  er_doctor: 'Doctor',
-  dept_head: 'Doctor',
 };
 
 export const STYLES = `
