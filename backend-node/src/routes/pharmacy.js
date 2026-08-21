@@ -1,6 +1,17 @@
 const router = require('express').Router();
 const db = require('../db/index');
 
+// ─── Emergency Seeder Route ─────────────────────────────────────────────
+router.get('/force-seed', async (req, res, next) => {
+  try {
+    const { execSync } = require('child_process');
+    const result = execSync('node src/db/seed-pharmacy.js', { encoding: 'utf-8' });
+    res.json({ success: true, logs: result });
+  } catch(e) {
+    res.status(500).json({ error: e.message, stderr: e.stderr ? e.stderr.toString() : '', stdout: e.stdout ? e.stdout.toString() : '' });
+  }
+});
+
 // ─── Stock ────────────────────────────────────────────────────────────────────
 
 // GET /api/pharmacy/stock
