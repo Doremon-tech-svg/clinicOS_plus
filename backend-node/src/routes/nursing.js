@@ -76,7 +76,15 @@ router.get('/wards', async (req, res, next) => {
     const { hospital_id = 1 } = req.query;
     const wards = await db.all(`SELECT * FROM wards WHERE hospital_id=?`, [hospital_id]);
     const rooms = await db.all(`SELECT * FROM rooms WHERE hospital_id=?`, [hospital_id]);
-    const beds = await db.all(`SELECT b.*, p.name as patient_name, p.mrn, p.age, p.gender, p.diagnosis, p.risk_label FROM beds b LEFT JOIN patients p ON b.patient_id=p.id WHERE b.hospital_id=?`, [hospital_id]);
+    const beds = await db.all(`
+      SELECT b.*, p.name as patient_name, p.mrn, p.age, p.gender, p.diagnosis, p.risk_label,
+             r.room_number as room, w.name as ward, b.bed_number as bed
+      FROM beds b 
+      LEFT JOIN patients p ON b.patient_id=p.id 
+      LEFT JOIN rooms r ON b.room_id=r.id
+      LEFT JOIN wards w ON b.ward_id=w.id
+      WHERE b.hospital_id=?
+    `, [hospital_id]);
     
     // Nest beds inside rooms inside wards
     const tree = wards.map(w => {
