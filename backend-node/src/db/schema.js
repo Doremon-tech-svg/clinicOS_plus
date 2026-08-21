@@ -28,7 +28,7 @@ async function initSchema() {
       age INTEGER, gender TEXT, blood_group TEXT, phone TEXT, address TEXT,
       ward TEXT, bed TEXT, room TEXT, department TEXT, diagnosis TEXT,
       risk_score REAL DEFAULT 0, risk_label TEXT DEFAULT 'Low',
-      hr INTEGER, bp TEXT, spo2 REAL, temp REAL,
+      hr INTEGER, bp TEXT, spo2 REAL, temp REAL, glucose REAL,
       admitted_at DATETIME DEFAULT CURRENT_TIMESTAMP, discharged_at DATETIME,
       status TEXT DEFAULT 'Admitted', attending_doctor_id INTEGER
     )`,
@@ -110,6 +110,22 @@ async function initSchema() {
       ordered_by INTEGER, ordered_by_name TEXT, source TEXT DEFAULT 'manual',
       notes TEXT, dispensed_by INTEGER, dispensed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS wards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1,
+      name TEXT NOT NULL, type TEXT DEFAULT 'General', capacity INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS rooms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1,
+      ward_id INTEGER, room_number TEXT NOT NULL, type TEXT DEFAULT 'Standard',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS beds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1,
+      ward_id INTEGER, room_id INTEGER, bed_number TEXT NOT NULL,
+      status TEXT DEFAULT 'Available', patient_id INTEGER,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
   ];
 

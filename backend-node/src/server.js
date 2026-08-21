@@ -20,6 +20,13 @@ async function runAutoSeed() {
       execSync('node src/db/seed-pharmacy.js', { stdio: 'inherit' });
       console.log('✅ Pharmacy seeding complete.');
     }
+
+    const bRow = await db.get(`SELECT COUNT(*) as count FROM wards`);
+    if (!bRow || Number(bRow.count) === 0) {
+      console.log('🛏️ Beds/Wards empty. Running beds seed...');
+      execSync('node src/db/seed-beds.js', { stdio: 'inherit' });
+      console.log('✅ Beds seeding complete.');
+    }
   } catch (err) {
     console.error('⚠️ Auto-seeding check failed (database might not be initialized yet).');
     // Ignore error, app bootstrap will init schema

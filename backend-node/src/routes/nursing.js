@@ -58,4 +58,71 @@ router.get('/logs', async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
+// ─── Nursing Data Routes ─────────────────────────────────────────────
+
+router.get('/patients', async (req, res, next) => {
+  try {
+    const { hospital_id = 1, ward } = req.query;
+    let sql = `SELECT * FROM patients WHERE hospital_id=? AND status='Admitted'`;
+    const params = [hospital_id];
+    if (ward) { sql += ` AND ward=?`; params.push(ward); }
+    const patients = await db.all(sql, params);
+    res.json({ patients });
+  } catch(e) { next(e); }
+});
+
+router.get('/wards', async (req, res, next) => {
+  try {
+    const { hospital_id = 1 } = req.query;
+    const wards = await db.all(`SELECT * FROM wards WHERE hospital_id=?`, [hospital_id]);
+    const rooms = await db.all(`SELECT * FROM rooms WHERE hospital_id=?`, [hospital_id]);
+    const beds = await db.all(`SELECT b.*, p.name as patient_name, p.mrn, p.age, p.gender, p.diagnosis, p.risk_label FROM beds b LEFT JOIN patients p ON b.patient_id=p.id WHERE b.hospital_id=?`, [hospital_id]);
+    
+    // Nest beds inside rooms inside wards
+    const tree = wards.map(w => {
+      const wRooms = rooms.filter(r => r.ward_id === w.id).map(r => ({
+        ...r,
+        beds: beds.filter(b => b.room_id === r.id)
+      }));
+      return { ...w, rooms: wRooms };
+    });
+    
+    res.json({ wards: tree, rawBeds: beds });
+  } catch(e) { next(e); }
+});
+
+router.patch('/patients/:id', async (req, res, next) => {
+  try {
+    const { hr, bp, spo2, temp, glucose, bed_id } = req.body;
+    const pId = req.params.id;
+    
+    const updates = []; const params = [];
+    if (hr !== undefined) { updates.push('hr=?'); params.push(hr); }
+    if (bp !== undefined) { updates.push('bp=?'); params.push(bp); }
+    if (spo2 !== undefined) { updates.push('spo2=?'); params.push(spo2); }
+    if (temp !== undefined) { updates.push('temp=?'); params.push(temp); }
+    if (glucose !== undefined) { updates.push('glucose=?'); params.push(glucose); }
+    
+    if (bed_id) {
+      // Free old bed
+      await db.run(`UPDATE beds SET status='Available', patient_id=NULL WHERE patient_id=?`, [pId]);
+      // Occupy new bed
+      await db.run(`UPDATE beds SET status='Occupied', patient_id=? WHERE id=?`, [pId, bed_id]);
+      
+      const bInfo = await db.get(`SELECT b.bed_number, r.room_number, w.name as ward_name FROM beds b JOIN rooms r ON b.room_id=r.id JOIN wards w ON b.ward_id=w.id WHERE b.id=?`, [bed_id]);
+      if (bInfo) {
+        updates.push('bed=?', 'room=?', 'ward=?');
+        params.push(bInfo.bed_number, bInfo.room_number, bInfo.ward_name);
+      }
+    }
+    
+    if (updates.length > 0) {
+      params.push(pId);
+      await db.run(`UPDATE patients SET ${updates.join(', ')} WHERE id=?`, params);
+    }
+    
+    res.json({ success: true });
+  } catch(e) { next(e); }
+});
+
 module.exports = router;

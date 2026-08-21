@@ -37,7 +37,7 @@ function ShapRow({ factor, score }) {
   );
 }
 
-export function PatientCard({ patient, onDischarge, onExplain, onMedToggle }) {
+export function PatientCard({ patient, onDischarge, onExplain, onMedToggle, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const alertVitals = patient.spo2 < 95 || patient.hr > 100 || patient.risk > 70;
 
@@ -203,6 +203,18 @@ export function PatientCard({ patient, onDischarge, onExplain, onMedToggle }) {
               }}
             >
               <Brain size={12} /> Risk Report
+            </button>
+            <button
+              onClick={() => onEdit(patient)}
+              style={{
+                flex: 1, padding: "8px 12px", borderRadius: 8,
+                border: "1.5px solid #cbd5e1",
+                background: "#fff", color: "#475569",
+                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6, justifyContent: "center",
+              }}
+            >
+              Edit Vitals
             </button>
             <button
               onClick={() => onDischarge(patient)}

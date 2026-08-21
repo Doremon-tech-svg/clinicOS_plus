@@ -140,6 +140,63 @@ export function DischargeModal({ patient, onConfirm, onClose }) {
   );
 }
 
+import { useState } from "react";
+export function EditPatientModal({ patient, availableBeds, onConfirm, onClose }) {
+  if (!patient) return null;
+  const [form, setForm] = useState({
+    hr: patient.hr || '', bp: patient.bp || '', spo2: patient.spo2 || '',
+    temp: patient.temp || '', glucose: patient.glucose || '', bed_id: ''
+  });
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, marginBottom: 12 };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      background: "rgba(15,23,42,0.6)", backdropFilter: "blur(6px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }} onClick={onClose}>
+      <div
+        style={{ background: "#fff", borderRadius: 20, padding: 24, maxWidth: 350, width: "100%", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>Update Patient</div>
+          <X size={16} color="#64748b" style={{ cursor: "pointer" }} onClick={onClose} />
+        </div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>{patient.name}</div>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 10px" }}>
+          <div><label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>HR (bpm)</label><input name="hr" value={form.hr} onChange={handleChange} style={inputStyle} type="number" /></div>
+          <div><label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>BP (mmHg)</label><input name="bp" value={form.bp} onChange={handleChange} style={inputStyle} placeholder="120/80" /></div>
+          <div><label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>SpO2 (%)</label><input name="spo2" value={form.spo2} onChange={handleChange} style={inputStyle} type="number" /></div>
+          <div><label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Temp (°F)</label><input name="temp" value={form.temp} onChange={handleChange} style={inputStyle} type="number" step="0.1" /></div>
+          <div style={{ gridColumn: "span 2" }}><label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Glucose (mg/dL)</label><input name="glucose" value={form.glucose} onChange={handleChange} style={inputStyle} type="number" /></div>
+          
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Assign New Bed (Optional)</label>
+            <select name="bed_id" value={form.bed_id} onChange={handleChange} style={{ ...inputStyle, background: "#f8faff" }}>
+              <option value="">-- Keep Current Bed ({patient.bed}) --</option>
+              {availableBeds?.map(b => (
+                <option key={b.id} value={b.id}>Bed {b.bed_number} (Room {b.room_id})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => onConfirm(patient.id, form)} 
+          style={{ width: "100%", padding: "10px", borderRadius: 8, border: "none", background: "#2f92d0", color: "#fff", fontWeight: 700, cursor: "pointer", marginTop: 8 }}
+        >
+          Save Updates
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Toast({ toasts, remove }) {
   return (
     <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "none" }}>

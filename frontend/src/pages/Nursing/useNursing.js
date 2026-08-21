@@ -68,6 +68,7 @@ export function useNursing() {
   const [explainPatient,  setExplainPatient]  = useState(null);
   const [dischargePatient,setDischargePatient]= useState(null);
   const [bedCount,        setBedCount]        = useState({ total: 48, occupied: 45 });
+  const [rawBeds,         setRawBeds]         = useState([]);
   const [medReminderActive,setMedReminderActive] = useState(true);
   const [aiProcessing,    setAiProcessing]    = useState(false);
   const [demoIdx,         setDemoIdx]         = useState(0);
@@ -80,27 +81,34 @@ export function useNursing() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [riskRes, bedRes] = await Promise.all([
-          fetch(`${BACKEND}/api/patients?limit=20&offset=0`),
-          fetch(`${BACKEND}/api/bed-optimizer?limit=20&offset=0`),
+        const [patientsRes, wardsRes] = await Promise.all([
+          fetch(`${BACKEND}/api/nursing/patients`),
+          fetch(`${BACKEND}/api/nursing/wards`),
         ]);
-        const riskData = await riskRes.json();
-        const bedData  = await bedRes.json();
+        const patientsData = await patientsRes.json();
+        const wardsData  = await wardsRes.json();
 
-        const merged = riskData.patients.map(p => {
-          const bedInfo = bedData.patients?.find(b => b.id === p.id) || {};
+        // Count beds based on real DB
+        if (wardsData.rawBeds) {
+          const total = wardsData.rawBeds.length;
+          const occupied = wardsData.rawBeds.filter(b => b.status === 'Occupied').length;
+          setBedCount({ total, occupied });
+          setRawBeds(wardsData.rawBeds);
+        }
+
+        const merged = patientsData.patients.map(p => {
           return {
             id: p.id, name: p.name, age: p.age,
-            room: p.room || p.bed, bed: p.bed,
+            room: p.room, bed: p.bed, ward: p.ward,
             diagnosis: p.diagnosis || "Unknown",
-            risk: p.risk_score,
+            risk: p.risk_score || 0,
             riskLevel: p.risk_label === "High" ? "HIGH" : p.risk_label === "Low" ? "LOW" : "MEDIUM",
             riskColor: p.risk_label === "High" ? "#e53e3e" : p.risk_label === "Low" ? "#16a34a" : "#d97706",
             riskBg: p.risk_label === "High" ? "#fff5f5" : p.risk_label === "Low" ? "#f0fdf4" : "#fffbeb",
-            factors: p.shap_explanation?.map(e => e.feature) || [],
-            shapValues: p.shap_explanation?.map(e => ({ factor: e.feature, score: e.shap_value })) || [],
-            predictedDischarge: bedInfo.predicted_discharge_days || 3,
-            dischargeText: bedInfo.discharge_estimate || "3 days",
+            factors: [],
+            shapValues: [],
+            predictedDischarge: 3,
+            dischargeText: "3 days",
             hr: p.hr || 72, bp: p.bp || "120/80",
             spo2: p.spo2 || 98, temp: p.temp || 98.6,
             weight: p.weight || 70, rr: p.rr || 16, glucose: p.glucose || 100,
@@ -121,15 +129,36 @@ export function useNursing() {
           done: false, source: "AI", time: "NOW", category: "Assessment",
         }));
         setTaskList(tasks);
-      } catch {
-        setPatients(INITIAL_PATIENTS);
-        setTaskList(INITIAL_TASKS);
+      } catch (err) {
+        console.error("Nursing fetch failed:", err);
       } finally {
         setLoading(false);
       }
     }
     fetchData();
   }, []);
+
+  // ── Update Patient ──
+  const updatePatient = async (id, data) => {
+    try {
+      await fetch(`${BACKEND}/api/nursing/patients/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      // Refresh local state roughly
+      setPatients(prev => prev.map(p => {
+        if (p.id === id) {
+          return { ...p, ...data, lastVitals: "Just now" };
+        }
+        return p;
+      }));
+      pushToast({ icon: "✅", title: "Patient Updated", msg: "Vitals and bed data saved to database.", color: "#16a34a" });
+    } catch(e) {
+      console.error(e);
+      pushToast({ icon: "❌", title: "Update Failed", msg: e.message, color: "#e53e3e" });
+    }
+  };
 
   // ── Live clock ──
   useEffect(() => {
@@ -354,10 +383,10 @@ export function useNursing() {
     explainPatient, setExplainPatient,
     dischargePatient, setDischargePatient,
     bedCount, medReminderActive, setMedReminderActive,
-    aiProcessing,
+    aiProcessing, rawBeds,
     // actions
     handleMic, toggleTask, addTask,
-    handleMedToggle, handleDischargeConfirm,
+    handleMedToggle, handleDischargeConfirm, updatePatient,
     acknowledgeAlert, dismissAlert, toggleScheduleItem,
     processVoiceCommand,
     // stats

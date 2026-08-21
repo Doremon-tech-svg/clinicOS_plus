@@ -12,12 +12,14 @@ import { CriticalAlerts } from "./components/CriticalAlerts";
 import { Profile } from "./components/Profile";
 import { Settings } from "./components/Settings";
 import { Support } from "./components/Support";
-import { RiskModal, DischargeModal, Toast } from "./components/Modals";
+import { RiskModal, DischargeModal, Toast, EditPatientModal } from "./components/Modals";
 import { Loader2, RefreshCw, Plus, Stethoscope } from "lucide-react";
 import { WARD_COLOR } from "./constants";
+import { useState } from "react";
 
 export default function Nursing() {
   const ctx = useNursing();
+  const [editPatient, setEditPatient] = useState(null);
 
   return (
     <>
@@ -115,6 +117,7 @@ export default function Nursing() {
                         onDischarge={() => ctx.setDischargePatient(p)}
                         onExplain={() => ctx.setExplainPatient(p)}
                         onMedToggle={ctx.handleMedToggle}
+                        onEdit={() => setEditPatient(p)}
                       />
                     ))}
                   </div>
@@ -175,6 +178,12 @@ export default function Nursing() {
         {/* Modals */}
         <RiskModal patient={ctx.explainPatient} onClose={() => ctx.setExplainPatient(null)} />
         <DischargeModal patient={ctx.dischargePatient} onConfirm={ctx.handleDischargeConfirm} onClose={() => ctx.setDischargePatient(null)} />
+        <EditPatientModal 
+          patient={editPatient} 
+          availableBeds={ctx.rawBeds.filter(b => b.status === 'Available')} 
+          onConfirm={(id, data) => { ctx.updatePatient(id, data); setEditPatient(null); }} 
+          onClose={() => setEditPatient(null)} 
+        />
 
         {/* Toasts */}
         <Toast toasts={ctx.toasts} remove={ctx.removeToast} />
