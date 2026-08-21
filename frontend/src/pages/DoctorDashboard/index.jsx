@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { API } from '../../config/api';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -62,8 +63,23 @@ function SettingsModal({ onClose }) {
   );
 }
 
+const DEPT_ROUTE = {
+  'Emergency':  '/emergency',
+  'Surgery':    '/surgery',
+  'Maternity':  '/maternity',
+  'Nursing':    '/nursing',
+  'Pharmacy':   '/pharmacy',
+  'Cardiology': '/nursing',
+  'ICU':        '/nursing',
+  'Neurology':  '/nursing',
+  'Radiology':  '/nursing',
+  'OPD':        '/nursing',
+  'Lab':        '/nursing',
+};
+
 export default function DoctorDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [patients, setPatients]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [showProfile, setShowProfile] = useState(false);
@@ -71,6 +87,12 @@ export default function DoctorDashboard() {
 
   const depts    = getDoctorDepts(user);
   const [activeTab, setActiveTab] = useState(depts[0] || 'Patients');
+
+  const handleWardRound = () => {
+    const dept = user?.department || depts[0];
+    const route = DEPT_ROUTE[dept] || '/nursing';
+    navigate(route);
+  };
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -136,7 +158,10 @@ export default function DoctorDashboard() {
             </div>
           </div>
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-center items-center">
-            <button className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold uppercase tracking-widest text-xs hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+            <button
+              onClick={handleWardRound}
+              className="w-full py-4 rounded-xl bg-slate-900 text-white font-bold uppercase tracking-widest text-xs hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+            >
               <Activity className="w-4 h-4" /> Start Ward Rounds
             </button>
           </div>
