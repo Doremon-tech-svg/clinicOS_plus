@@ -143,10 +143,6 @@ export default function Nursing() {
               <Schedule schedule={ctx.schedule} onToggle={ctx.toggleScheduleItem} />
             )}
 
-            {ctx.activeTab === "ward" && (
-              <WardView patients={ctx.patients} bedCount={ctx.bedCount} rawBeds={ctx.rawBeds} />
-            )}
-
             {ctx.activeTab === "rooms" && (
               <RoomDashboard patients={ctx.patients} bedCount={ctx.bedCount} rawBeds={ctx.rawBeds} />
             )}

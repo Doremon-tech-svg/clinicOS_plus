@@ -11,8 +11,7 @@ const NAV = [
   { id: "vitals",     label: "Vitals Monitor",  icon: Activity },
   { id: "tasks",      label: "Tasks",           icon: CheckSquare },
   { id: "schedule",   label: "Schedule",        icon: Calendar },
-  { id: "ward",       label: "Ward View",       icon: Bed },
-  { id: "rooms",      label: "Room Dashboard",  icon: Bed },
+  { id: "rooms",      label: "Room Overview",   icon: Bed },
   { id: "voicelogs",  label: "Voice Logs",      icon: Mic2 },
   { id: "critical",   label: "Critical Alerts", icon: AlertTriangle },
 ];
