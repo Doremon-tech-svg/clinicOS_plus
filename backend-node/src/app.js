@@ -27,6 +27,7 @@ app.use('/api/admin',         require('./routes/blockchain'));
 app.use('/api/patient',       require('./routes/blockchain'));
 app.use('/api/staff',         require('./routes/staff'));
 app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/pharmacy',      require('./routes/pharmacy'));
 
 // Removed invalid legacy routing; use proper /api/emergency/* routes instead.
 

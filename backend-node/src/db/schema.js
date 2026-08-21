@@ -95,6 +95,22 @@ async function initSchema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, patient_name TEXT,
       details TEXT, tx_hash TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS pharmacy_stock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1,
+      name TEXT NOT NULL, generic_name TEXT, category TEXT DEFAULT 'General',
+      unit TEXT DEFAULT 'tablets', quantity INTEGER DEFAULT 0, reorder_level INTEGER DEFAULT 50,
+      location TEXT, price_per_unit REAL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS pharmacy_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1,
+      patient_id INTEGER, patient_name TEXT, bed TEXT, room TEXT, ward TEXT, department TEXT,
+      medicine_name TEXT NOT NULL, quantity INTEGER DEFAULT 1, unit TEXT DEFAULT 'tablets',
+      priority TEXT DEFAULT 'Routine', status TEXT DEFAULT 'Pending',
+      ordered_by INTEGER, ordered_by_name TEXT, source TEXT DEFAULT 'manual',
+      notes TEXT, dispensed_by INTEGER, dispensed_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (let sql of tables) {
