@@ -122,7 +122,7 @@ router.post('/register-hospital', async (req, res, next) => {
     // Create Admin User
     const hash = await bcrypt.hash(adminPassword, 10);
     await db.run(
-      `INSERT INTO users (hospital_id, email, password_hash, role, profile_id) VALUES (?, ?, ?, 'admin', ?)`,
+      `INSERT INTO users (hospital_id, email, password_hash, role, profile_id, approval_status) VALUES (?, ?, ?, 'admin', ?, 'approved')`,
       [hospitalId, adminEmail.toLowerCase(), hash, sResult.lastInsertRowid]
     );
 
