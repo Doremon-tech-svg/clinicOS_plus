@@ -17,8 +17,9 @@ async function initSchema() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS ambulances (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, unit_name TEXT UNIQUE NOT NULL,
-      status TEXT DEFAULT 'Available', driver_name TEXT, paramedic_id INTEGER,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, hospital_id INTEGER DEFAULT 1, unit_name TEXT NOT NULL,
+      vehicle_reg TEXT, vehicle_type TEXT DEFAULT 'ALS', status TEXT DEFAULT 'Available',
+      driver_name TEXT, driver_phone TEXT, paramedic_id INTEGER,
       current_alert_id INTEGER, last_lat REAL, last_lng REAL,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
@@ -32,11 +33,12 @@ async function initSchema() {
       status TEXT DEFAULT 'Admitted', attending_doctor_id INTEGER
     )`,
     `CREATE TABLE IF NOT EXISTS emergency_alerts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, paramedic_id INTEGER, ambulance_unit TEXT,
+      id INTEGER PRIMARY KEY AUTOINCREMENT, paramedic_id INTEGER, ambulance_id INTEGER, ambulance_unit TEXT,
       raw_input TEXT, condition_summary TEXT, severity TEXT DEFAULT 'Moderate',
       departments TEXT, preparation TEXT, clinical_note TEXT, eta_minutes INTEGER,
-      gps_lat REAL, gps_lng REAL, status TEXT DEFAULT 'Dispatched',
-      assigned_doctor_id INTEGER, assigned_nurses TEXT, blockchain_tx TEXT, ai_confidence INTEGER,
+      dispatched_location TEXT, gps_lat REAL, gps_lng REAL, status TEXT DEFAULT 'Dispatched',
+      assigned_doctor_id INTEGER, assigned_paramedic_id INTEGER, assigned_nurses TEXT,
+      blockchain_tx TEXT, ai_confidence INTEGER,
       dispatched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       acknowledged_at DATETIME, arrived_at DATETIME, completed_at DATETIME
     )`,
@@ -73,7 +75,7 @@ async function initSchema() {
     `CREATE TABLE IF NOT EXISTS notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT DEFAULT 'info',
       title TEXT NOT NULL, message TEXT, department TEXT, target_role TEXT,
-      read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      target_user_id INTEGER, read INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS ai_audit_trail (
       id INTEGER PRIMARY KEY AUTOINCREMENT, decision_type TEXT, input_text TEXT,
@@ -104,6 +106,29 @@ async function initSchema() {
     }
     await db.run(sql);
   }
+
+  // Seed fleet data if empty
+  const fleetCount = await db.get('SELECT COUNT(*) as cnt FROM ambulances');
+  if (!fleetCount || fleetCount.cnt === 0) {
+    const units = [
+      [1, 'Unit 1-Alpha',  'DL-01-AM-0001', 'ALS', 'Available',    'Ramesh Kumar',    '+91-98100-11001', null],
+      [1, 'Unit 2-Bravo',  'DL-01-AM-0002', 'ALS', 'Available',    'Suresh Yadav',    '+91-98100-11002', null],
+      [1, 'Unit 3-Charlie','DL-01-AM-0003', 'BLS', 'Available',    'Mahesh Singh',    '+91-98100-11003', null],
+      [1, 'Unit 4-Delta',  'DL-01-AM-0004', 'ALS', 'Busy',         'Pradeep Tiwari',  '+91-98100-11004', null],
+      [1, 'Unit 5-Echo',   'DL-01-AM-0005', 'BLS', 'Busy',         'Ajay Sharma',     '+91-98100-11005', null],
+      [1, 'Unit 6-Foxtrot','DL-01-AM-0006', 'ALS', 'Available',    'Vikram Gupta',    '+91-98100-11006', null],
+      [1, 'Unit 7-Golf',   'DL-01-AM-0007', 'NICU','Maintenance',  'Deepak Verma',    '+91-98100-11007', null],
+      [1, 'Unit 8-Hotel',  'DL-01-AM-0008', 'BLS', 'Available',    'Rohit Mishra',    '+91-98100-11008', null],
+    ];
+    for (const u of units) {
+      await db.run(
+        `INSERT INTO ambulances (hospital_id,unit_name,vehicle_reg,vehicle_type,status,driver_name,driver_phone,paramedic_id) VALUES (?,?,?,?,?,?,?,?)`,
+        u
+      );
+    }
+    console.log('🚑 Fleet seed data inserted');
+  }
+
   console.log('✅ Schema ready');
 }
 

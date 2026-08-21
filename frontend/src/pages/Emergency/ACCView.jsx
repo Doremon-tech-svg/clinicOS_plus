@@ -2,11 +2,13 @@ import {
   Mic, MicOff, Loader2, CheckCircle2, XCircle, ClipboardList,
   Keyboard, History, Shield, AlertTriangle,
 } from 'lucide-react';
-import { SEV_DOT, SEV_BG, SEV_TEXT, STATUS_COLOR } from './constants';
-import FleetPanel from './FleetPanel';
-import LiveMap    from './LiveMap';
+import { SEV_DOT, SEV_BG, SEV_TEXT } from './constants';
+import FleetPanel      from './FleetPanel';
+import LiveMap         from './LiveMap';
+import DispatchPanel   from './components/DispatchPanel';
+import ActiveRunsTable from './components/ActiveRunsTable';
 
-export default function ACCView({ em }) {
+export default function ACCView({ em, canEdit }) {
   const {
     conditionInput, setConditionInput, etaInput, setEtaInput,
     severity, setSeverity, additionalNotes, setAdditionalNotes,
@@ -15,7 +17,8 @@ export default function ACCView({ em }) {
     alertStatus, blockchainTx, isSending, sendEmergencyAlert,
     routeOptions, displayETA, ambulancePos, gpsETA,
     liveAlerts, dbAlerts, alertsLoading,
-    fleet, markFleet,
+    fleet, markFleet, addFleet, removeFleet,
+    dispatchRun, patchAlert,
   } = em;
 
   const alerts = dbAlerts.length > 0 ? dbAlerts : liveAlerts;
@@ -78,7 +81,7 @@ export default function ACCView({ em }) {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Manual Entry + Alert Feed */}
+        {/* Left: Manual Entry + Active Runs + Alert Feed */}
         <div className="lg:col-span-2 space-y-6">
           {/* Manual Entry */}
           <section className="glass ghost-border rounded-2xl p-6">
@@ -124,13 +127,15 @@ export default function ACCView({ em }) {
             </div>
           </section>
 
+          {/* Active Runs */}
+          <ActiveRunsTable alerts={alerts} loading={alertsLoading} onStatusChange={(id, status) => patchAlert(id, status)} />
+
           {/* Live Alert Feed */}
           <section className="glass ghost-border rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#ebbbb5]/20 bg-[#f3f3f3]">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-[#bc000c]" />
-                <h2 className="text-sm font-black uppercase tracking-widest text-[#603e3a]">Live Alert Feed</h2>
-                <span className="text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">auto-refresh 20s</span>
+                <h2 className="text-sm font-black uppercase tracking-widest text-[#603e3a]">Alert History</h2>
               </div>
               {alertsLoading && <Loader2 className="h-4 w-4 animate-spin text-[#bc000c]" />}
             </div>
@@ -139,15 +144,15 @@ export default function ACCView({ em }) {
                 <thead>
                   <tr className="text-[10px] font-black uppercase tracking-widest text-[#956d68]">
                     <th className="px-5 py-3">Incident</th><th className="px-5 py-3">Unit</th>
-                    <th className="px-5 py-3">Dept</th><th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Location</th><th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">ETA</th><th className="px-5 py-3">Time</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e8e8e8]">
                   {alerts.length === 0 && !alertsLoading && (
-                    <tr><td colSpan={6} className="px-5 py-8 text-center text-sm text-slate-400">No active alerts</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-8 text-center text-sm text-slate-400">No alerts yet</td></tr>
                   )}
-                  {alerts.map((a, i) => (
+                  {alerts.filter(a => a.status === 'Completed').slice(0, 10).map((a, i) => (
                     <tr key={a.id || i} className="hover:bg-[#ffdad5]/20 transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
@@ -156,11 +161,7 @@ export default function ACCView({ em }) {
                         </div>
                       </td>
                       <td className="px-5 py-3 text-sm text-slate-600">{a.ambulance_unit || a.unit}</td>
-                      <td className="px-5 py-3">
-                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
-                          {a.departments?.[0] || a.department}
-                        </span>
-                      </td>
+                      <td className="px-5 py-3 text-xs text-slate-500 max-w-[120px] truncate">{a.dispatched_location || '—'}</td>
                       <td className="px-5 py-3">
                         <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg border ${SEV_BG[a.severity] || ''} ${SEV_TEXT[a.severity] || ''}`}>
                           {a.status}
@@ -189,7 +190,6 @@ export default function ACCView({ em }) {
               <div className="text-3xl font-black text-[#bc000c]">{displayETA}</div>
               <div className="text-[10px] font-black uppercase text-[#603e3a]">{ambulancePos ? 'GPS ETA' : 'ETA'}</div>
             </div>
-            {/* Routing */}
             <div className="mt-3 space-y-2">
               {routeOptions.map((r, i) => (
                 <div key={i} className={`flex items-center justify-between rounded-lg bg-white p-2.5 ${r.muted ? 'opacity-30' : ''}`}>
@@ -226,11 +226,18 @@ export default function ACCView({ em }) {
             )}
           </div>
 
+          {/* Dispatch Panel */}
+          <DispatchPanel fleet={fleet} onDispatch={dispatchRun} />
+
           {/* Live Map */}
           <LiveMap ambulancePos={ambulancePos} gpsETA={gpsETA} />
 
           {/* Fleet */}
-          <FleetPanel fleet={fleet} markFleet={markFleet} />
+          <FleetPanel
+            fleet={fleet} markFleet={markFleet}
+            addFleet={addFleet} removeFleet={removeFleet}
+            canEdit={canEdit}
+          />
         </div>
       </div>
     </div>

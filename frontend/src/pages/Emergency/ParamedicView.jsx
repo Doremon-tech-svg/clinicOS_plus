@@ -1,5 +1,7 @@
-import { Mic, MicOff, Loader2, CheckCircle2, ClipboardList, Navigation, Shield } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Navigation, Shield } from 'lucide-react';
 import { SEV_BG, SEV_TEXT } from './constants';
+import DispatchNotification from './components/DispatchNotification';
+import VoiceAssistant       from './components/VoiceAssistant';
 
 export default function ParamedicView({ em }) {
   const {
@@ -7,14 +9,20 @@ export default function ParamedicView({ em }) {
     alertStatus, blockchainTx, aiConfidence, severity,
     conditionInput, gpsStatus, ambulancePos, gpsETA, displayETA,
     startVoice, stopVoice, routeOptions,
+    activeRun, patchAlert, handleVoiceCommand,
   } = em;
 
+  const onEnRoute       = (id) => patchAlert(id, 'En Route');
+  const onPatientReached = (id) => patchAlert(id, 'Arrived');
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pt-24 px-4 pb-12">
+    <div className="max-w-2xl mx-auto space-y-5 pt-24 px-4 pb-12">
       {/* Header card */}
       <div className="glass ghost-border rounded-2xl p-6 text-center">
-        <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Unit 7-Alpha · Field Mode</div>
-        <h1 className="text-3xl font-extrabold text-[#bc000c] tracking-tight">Paramedic Dispatch</h1>
+        <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
+          {activeRun ? activeRun.unit_name || 'Field Mode' : 'Standby'}
+        </div>
+        <h1 className="text-3xl font-extrabold text-[#bc000c] tracking-tight">Paramedic Console</h1>
         <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-600 font-bold">
           <Navigation className="h-3 w-3" /> {gpsStatus}
         </div>
@@ -28,39 +36,22 @@ export default function ParamedicView({ em }) {
         </div>
       )}
 
-      {/* Voice Button */}
-      <div className="glass ghost-border rounded-2xl p-8 flex flex-col items-center gap-6">
-        <div className="relative">
-          {isListening && (
-            <>
-              <div className="absolute inset-0 rounded-full border-4 border-red-400/40 animate-ping" />
-              <div className="absolute -inset-4 rounded-full border-2 border-red-300/20 animate-ping [animation-delay:300ms]" />
-            </>
-          )}
-          <button
-            onClick={isListening ? stopVoice : startVoice}
-            className={`relative h-32 w-32 rounded-full flex items-center justify-center text-white transition-all active:scale-95 shadow-2xl ${
-              isListening ? 'bg-red-700' : 'bg-[#bc000c] pulsing-red'
-            }`}
-          >
-            {isProcessing ? <Loader2 className="h-12 w-12 animate-spin" /> : isListening ? <MicOff className="h-12 w-12" /> : <Mic className="h-12 w-12" />}
-          </button>
-        </div>
-        <div className="text-center">
-          <div className="font-black text-lg uppercase tracking-widest text-[#bc000c]">
-            {isListening ? 'Listening…' : isProcessing ? 'AI Processing…' : 'Tap to Report Condition'}
-          </div>
-          <div className="text-xs text-slate-400 mt-1">Voice auto-sends alert · AI triages in seconds</div>
-        </div>
+      {/* ── Dispatch notification (from dispatcher) ── */}
+      <DispatchNotification
+        run={activeRun}
+        onAcknowledge={onEnRoute}
+        onPatientReached={onPatientReached}
+      />
 
-        {/* Transcript */}
-        {transcript && (
-          <div className="w-full rounded-xl border-l-4 border-[#bc000c] bg-[#fff5f5] p-4">
-            <div className="text-[10px] font-black uppercase tracking-widest text-[#bc000c] mb-1">Recorded</div>
-            <p className="text-sm font-medium text-slate-700">"{transcript}"</p>
-          </div>
-        )}
-      </div>
+      {/* ── Voice Assistant ── */}
+      <VoiceAssistant
+        isListening={isListening}
+        isProcessing={isProcessing}
+        transcript={transcript}
+        onStart={startVoice}
+        onStop={stopVoice}
+        onCommand={handleVoiceCommand}
+      />
 
       {/* AI confidence badge */}
       {aiConfidence && conditionInput && (
